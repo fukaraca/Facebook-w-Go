@@ -10,6 +10,8 @@ import (
 	"log"
 )
 
+// tutorialedge.net/golang/the-go-init-function#alternative-approaches
+
 //InitServer function initiates general stuff
 func InitServer() {
 	R = gin.Default()
