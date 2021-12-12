@@ -3,8 +3,14 @@
 <head>
   <title>FaceClone</title>
 
-  <link rel="stylesheet" type="text/css" href="css/bootstrap.min.css">
-  <link rel="stylesheet" type="text/css" href="css/style.css">
+  <link rel="stylesheet" type="text/css" href="/css/bootstrap.min.css">
+  <link rel="stylesheet" type="text/css" href="/css/style.css">
+  <style>
+    .required:after {
+      content:" *";
+      color: red;
+    }
+  </style>
 </head>
 <body>
   <!-- nav -->
@@ -16,8 +22,9 @@
       <ul class="nav navbar-nav navbar-right">
         <li><a href="/home">Home</a></li>
         <li><a href="/profile">Profile</a></li>
+        <li><a href="/logout" >Logout</a></li>
 
-        <li><a href="/logout">Logout</a></li>
+
       </ul>
     </div>
   </nav>
@@ -33,18 +40,18 @@
           <hr>
           <form method="post" action="/updateprofile" >
             <div class="form-group">
-              <label >Firstname:</label>
-              <input class="form-control" type="text" name="firstname" placeholder="Your name" value="{{.firstname}}">
+              <label class="required"  >Firstname:</label>
+              <input class="form-control" type="text" name="firstname" placeholder="Your name" value="{{.firstname}}" required>
             </div>
 
             <div class="form-group">
-              <label >Family name:</label>
-              <input class="form-control" type="text" name="lastname" placeholder="Your family name" value="{{.lastname}}">
+              <label class="required" >Family name:</label>
+              <input class="form-control" type="text" name="lastname" placeholder="Your family name" value="{{.lastname}}"required>
             </div>
 
             <div class="form-group">
-              <label >Gender:</label>
-              <select class="form-control" name="gender" >
+              <label class="required" >Gender:</label>
+              <select class="form-control" name="gender" required>
                 <option value="{{.gender}}" selected>{{.gender}}</option>
                 <option value="male" >Male</option>
                 <option value="female">Female</option>
@@ -53,18 +60,18 @@
             </div>
 
             <div class="form-group">
-              <label >Birthday:</label>
-              <input class="form-control" type="date" name="birthday" placeholder="" value="{{.birthday}}">
+              <label class="required" >Birthday:</label>
+              <input class="form-control" type="date" name="birthday" placeholder="" value="{{.birthday}}"required>
             </div>
 
             <div class="form-group">
-              <label >Mobile Number:</label>
-              <input class="form-control" type="tel" pattern="[0-9]{3}-[0-9]{3}-[0-9]{4}" maxlength="14" name="mobilenumber" placeholder="Phone number" value="{{.mobilenumber}}">
+              <label class="required" >Mobile Number(+01234567890):</label>
+              <input class="form-control" type="tel" pattern="[+]{1}[0-9]{11,14}" name="mobilenumber" placeholder="Phone number" value="{{.mobilenumber}}"required>
             </div>
 
             <div class="form-group">
-              <label >Country:</label>
-              <select class="form-control">
+              <label class="required" >Country:</label>
+              <select class="form-control" name="country"required>
                 <option value="{{.country}}" selected>{{.country}}</option>
                 <option value="Turkey" >Turkey</option>
                 <option value="USA">USA</option>
@@ -84,20 +91,20 @@
       <!-- user profile block with avatar -->
       <div class="media">
         <div class="media-left">
-          <img src="img/my_avatar.png" class="media-object" alt="Avatar couldn't be loaded" style="width: 128px; height: 128px;">
+          <img src="{{.avatarPath}}" class="media-object" alt="Avatar couldn't be loaded" style="max-width: 150px; max-height: 150px;">
         </div>
         <div class="media-body"><!-- section at the right of avatar -->
-          <h2 class="media-heading">{{.profileId}}</h2>
-          <p>{{.profileStatus}}</p>
+          <h2 class="media-heading">{{.userName}}</h2>
+          <p>{{.userStatus}}</p>
         </div>
       </div>
       <hr>
 
       <!-- change profile picture -->
-      <form method="post" action="/updatepp" >
+      <form method="post" action="/updatepp" enctype="multipart/form-data">
       <div class="form-group">
         <label for="change_pp">Select image:</label>
-        <input class="btn btn-primary" id="change_pp" type="file" name="change_pp" accept="image/*">
+        <input class="btn btn-primary" id="change_pp" type="file" name="change_pp" accept="image/*" required>
         <br>
         <input type="submit" class="btn btn-primary" value="Update">
       </div>
@@ -111,11 +118,11 @@
         <h4>Change Password</h4>
         <form method="post" action="/changepassword">
           <div class="form-group">
-            <input class="form-control" type="password" name="newpassword" placeholder="New Password" value="">
+            <input class="form-control" type="password" name="newpassword" placeholder="New Password" value="" required>
           </div>
 
           <div class="form-group">
-            <input class="form-control" type="password" name="oldpassword" placeholder="Old Password" value="">
+            <input class="form-control" type="password" name="oldpassword" placeholder="Old Password" value="" required>
           </div>
 
           <div class="form-group">
@@ -136,7 +143,10 @@
     </ul>
   </footer>
   <!-- ./footer -->
-  <script type="text/javascript" src="js/bootstrap.min.js"></script>
-  <script type="text/javascript" src="js/script.js"></script>
+  <script type="text/javascript" src="/js/bootstrap.min.js"></script>
+  <script type="text/javascript" src="/js/script.js"></script>
+  <script>
+
+  </script>
 </body>
 </html>

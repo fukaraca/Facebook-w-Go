@@ -1,6 +1,8 @@
 package lib
 
-import "golang.org/x/crypto/bcrypt"
+import (
+	"golang.org/x/crypto/bcrypt"
+)
 
 //HashPassword function hashes password with bcrypt algorithm as Cost value and return hashed string value with an error
 func HashPassword(password string) (string, error) {
