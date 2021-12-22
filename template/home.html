@@ -3,123 +3,149 @@
 <head>
   <title>FaceClone</title>
 
-  <link rel="stylesheet" type="text/css" href="/css/bootstrap.min.css">
-  <link rel="stylesheet" type="text/css" href="/css/style.css">
+  <link rel="stylesheet" type="text/css" href="css/bootstrap.min.css">
+  <link rel="stylesheet" type="text/css" href="css/style.css">
+  <style>
+
+  </style>
 </head>
 <body>
-  <!-- nav -->
-  <nav class="navbar navbar-default">
-    <div class="container-fluid">
-      <div class="navbar-header">
-        <a class="navbar-brand" href="/home">FaceClone</a>
-      </div>
-      <ul class="nav navbar-nav navbar-right">
-        <li><a href="/home">Home</a></li>
-        <li><a href="/profile">Profile</a></li>
-        <li><a href="/logout">Logout</a></li>
-      </ul>
+<!-- nav -->
+<nav class="navbar navbar-default">
+  <div class="container-fluid">
+    <div class="navbar-header">
+      <a class="navbar-brand" href="/home">FaceClone</a>
     </div>
-  </nav>
-  <!-- ./nav -->
-
-  <!-- main -->
-  <main class="container">
-    <div class="row">
-      <div class="col-md-3">
-        <!-- profile brief -->
-        <div class="panel panel-default">
-          <label>{{.message}}</label>
-          <div class="panel-body">
-            <h4>{{.profileId}}</h4>
-            <p>{{.bio}}</p>
-          </div>
-        </div>
-        <!-- ./profile brief -->
-
-        <!-- friend requests -->
-        <div class="panel panel-default">
-          <div class="panel-body">
-            <h4>friend requests</h4>
-            <ul>
-              <li>
-                <a href="#">{{.pendingRequest}}</a>
-                <a class="text-success" href="#">[accept]</a> 
-                <a class="text-danger" href="#">[decline]</a>
-              </li>
-            </ul>
-          </div>
-        </div>
-        <!-- ./friend requests -->
-      </div>
-      <div class="col-md-6">
-        <!-- post form -->
-        <form method="post" action="">
-          <div class="input-group">
-            <input class="form-control" type="text" name="content" placeholder="Make a post...">
-            <span class="input-group-btn">
-              <button class="btn btn-success" type="submit" name="post">Post</button>
-            </span>
-          </div>
-        </form><hr>
-        <!-- ./post form -->
-
-        <!-- feed -->
-        <div>
-          <!-- post -->
-          <div class="panel panel-default">
-            <div class="panel-body">
-              <p>{{.latestPost}}</p>
-            </div>
-            <div class="panel-footer">
-              <span>posted {{.latestTime}} by {{.latestID}}</span>
-              <span class="pull-right"><a class="text-danger" href="#">[delete]</a></span>
-            </div>
-          </div>
-          <!-- ./post -->
-        </div>
-        <!-- ./feed -->
-      </div>
-      <div class="col-md-3">
-      <!-- add friend -->
-        <div class="panel panel-default">
-          <div class="panel-body">
-            <h4>add friend</h4>
-            <ul>
-              <li>
-                <a href="#">alberte</a> 
-                <a href="#">[add]</a>
-              </li>
-            </ul>
-          </div>
-        </div>
-        <!-- ./add friend -->
-
-        <!-- friends -->
-        <div class="panel panel-default">
-          <div class="panel-body">
-            <h4>friends</h4>
-            <ul>
-              <li>
-                <a href="#">{{.randFriendId}}</a>
-                <a class="text-danger" href="#">[unfriend]</a>
-              </li>
-            </ul>
-          </div>
-        </div>
-        <!-- ./friends -->
-      </div>
-    </div>
-  </main>
-  <!-- ./main -->
-
-  <!-- footer -->
-  <footer class="container text-center">
-    <ul class="nav nav-pills pull-right">
-      <li>FaceClone - Made by @fukaraca</li>
+    <ul class="nav navbar-nav navbar-right">
+      <li><a onclick="darkMode()">Dark Mode</a></li>
+      <li><a href="/home">Home</a></li>
+      <li><a href="/profile">Profile</a></li>
+      <li><a href="/logout">Logout</a></li>
     </ul>
-  </footer>
-  <!-- ./footer -->
-  <script type="text/javascript" src="/js/bootstrap.min.js"></script>
-  <script type="text/javascript" src="/js/script.js"></script>
+  </div>
+</nav>
+<!-- ./nav -->
+
+<!-- main -->
+<main class="container">
+  <div class="row">
+    <div class="col-md-3">
+      <!-- profile brief -->
+      <div class="panel panel-default">
+        <label>{{.message}}</label>
+        <div class="panel-body">
+          <h4>{{.profileId}}</h4>
+          <p>{{.bio}}</p>
+        </div>
+      </div>
+      <!-- ./profile brief -->
+
+      <!-- friend requests -->
+      <div class="panel panel-default">
+        <div class="panel-body">
+          <h4></h4>
+          <ul>
+            <li>
+              <a href="#"> </a>
+              <a class="text-success" href="#"></a>
+              <a class="text-danger" href="#"></a>
+            </li>
+          </ul>
+        </div>
+      </div>
+      <!-- ./friend requests -->
+    </div>
+    <div class="col-md-6">
+      <!-- post form -->
+      <form method="post" action="" enctype="multipart/form-data" >
+        <div class="input-group"  >
+          <textarea contenteditable="true" class="form-control" name="postmessage" placeholder="Make a post..."></textarea>
+          <span class="input-group-btn">
+            <img class="upimg" id="upimage1" src="/img/upicon.jpg" alt="Upload Image" onclick="uploadImage()">
+            <input style="display: none" id="postimage"  type="file" name="postimage" accept="image/*" onchange="document.getElementById('imgToBeUploaded').src=window.URL.createObjectURL(this.files[0]);document.getElementById('imgToBeUploaded').style.display='inline'">
+             <input class="btn btn-success" type="submit" name="post" value="Post">
+            </span>
+        </div>
+        <br>
+        <div>
+          <img style="display: none" id="imgToBeUploaded"  width="70" height="70">
+        </div>
+      </form>
+      <hr>
+      <!-- ./post form -->
+
+
+      <div>
+        <!-- post -->
+        <div class="panel panel-default">
+          {{range .Posts}}
+          <div class="panel-body">
+
+            <p>{{.postMessage}}</p> <br>
+            {{.ytEmbedLink}}
+
+          </div>
+          <div class="panel-footer">
+            <span>posted {{.postTime}} by {{.posterUsername}}</span>
+            <span class="pull-right"><a class="text-danger" href="/delpost/{{.postId}}">[delete]</a></span>
+          </div>
+          <hr>
+          {{end}}
+        </div>
+        <!-- ./post -->
+      </div>
+
+
+      <!-- ./feed -->
+    </div>
+    <div class="col-md-3">
+      <!-- add friend -->
+      <div class="panel panel-default">
+        <div class="panel-body">
+          <h4>Suggestions</h4>
+          {{range .suggestibles}}
+          <ul>
+            <li>
+              <a href="/user/{{.}}">{{.}}</a>
+
+            </li>
+          </ul>
+          {{end}}
+        </div>
+      </div>
+      <!-- ./add friend -->
+
+      <!-- friends -->
+      <div class="panel panel-default">
+        <div class="panel-body">
+          <h4>Missed me?</h4>
+          <ul>
+            <li>
+              <p>Check <a href="/user/{{.randomFriend}}" style="font-weight: bold;color: #122b40">{{.randomFriend}}</a>'s account!</p>
+
+            </li>
+          </ul>
+        </div>
+      </div>
+      <!-- ./friends -->
+    </div>
+  </div>
+</main>
+<!-- ./main -->
+
+<!-- footer -->
+<footer class="container text-center">
+  <ul class="nav nav-pills pull-right">
+    <li>FaceClone - Made by @fukaraca</li>
+  </ul>
+</footer>
+<!-- ./footer -->
+<script type="text/javascript" src="/js/bootstrap.min.js"></script>
+<script type="text/javascript" src="/js/script.js"></script>
+<script>
+
+
+
+</script>
 </body>
 </html>

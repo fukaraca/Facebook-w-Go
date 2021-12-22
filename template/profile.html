@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>FaceClone</title>
+  <title>FaceClone {{.profileID}}</title>
 
   <link rel="stylesheet" type="text/css" href="/css/bootstrap.min.css">
   <link rel="stylesheet" type="text/css" href="/css/style.css">
@@ -24,38 +24,75 @@
 
   <!-- main -->
   <main class="container">
+
+    <!-- buraya fotoğraflar gelecek-->
+    <div class="row">
+      <div class="col-md-9">
+        <p>fotoğraf alanı</p>
+      </div>
+    </div>
+    <!-- buraya fotoğraflar gelecek-->
+
     <div class="row">
       <div class="col-md-3">
         <!-- edit profile -->
         <div class="panel panel-default">
           <div class="panel-body">
             <h4>Edit profile</h4>
-            <form method="post" action="">
-              <div class="form-group">
-                <input class="form-control" type="text" name="status" placeholder="Status" value="">
+            <form method="post" action="/updatestatus">
+
+              <div class="panel-collapse">
+                <label >Relationship: {{.profilestruct.Relationship.String}}</label>
+              </div>
+              <div class="hidyform"style="display: none">
+                <input class="form-control" type="text" name="relationship" placeholder="Change relationship status" value="{{.profilestruct.Relationship.String}}" >
               </div>
 
-              <div class="form-group">
-                <input class="form-control" type="text" name="location" placeholder="Location" value="">
+              <div class="panel-collapse">
+                <label >School: {{.profilestruct.School.String}}</label>
+              </div>
+              <div class="hidyform" style="display: none">
+                <input class="form-control" type="text" name="school" placeholder="Latest school" value="{{.profilestruct.School.String}}">
               </div>
 
-              <div class="form-group">
-                <input class="btn btn-primary" type="submit" name="update_profile" value="Save">
+              <div class="panel-collapse">
+                <label >Location: {{.profilestruct.Location.String}}</label>
               </div>
+              <div class="hidyform" style="display: none">
+                <input class="form-control" type="text" name="location" placeholder="Change Location" value="{{.profilestruct.Location.String}}" >
+              </div>
+
+              <div class="panel-collapse">
+                <label >Workplace: {{.profilestruct.Workplace.String}}</label>
+              </div>
+              <div class="hidyform"style="display: none">
+                <input class="form-control" type="text" name="workplace" placeholder="Change workplace" value="{{.profilestruct.Workplace.String}}" >
+              </div>
+              <br>
+
+              <div class="form-group">
+                <input class="btn btn-primary" id="showbutton" type="button" name="showedit" value="Edit" onclick="hideEditStatus()">
+              </div>
+              <div class="hidyform" style="display: none">
+                <input class="btn btn-primary" type="submit" name="editprofile" value="Submit">
+              </div>
+
             </form>
           </div>
         </div>
         <!-- ./edit profile -->
       </div>
+
+
       <div class="col-md-6">
         <!-- user profile -->
         <div class="media">
           <div class="media-left">
-            <img src="{{.avatarPath}}" class="media-object" alt="Avatar couldn't be loaded" style="width: 128px; height: 128px;">
+            <img src="{{.avatarPath}}" class="media-object" alt="Avatar couldn't be loaded" style="max-width: 150px; max-height: 150px;">
           </div>
           <div class="media-body">
-            <h2 class="media-heading">{{.profileId}}</h2>
-            <p>{{.profileStatus}}</p>
+            <h2 class="media-heading">{{.profilestruct.Name.String}} {{.profilestruct.Lastname.String}}</h2>
+            <p>Bio: {{.profilestruct.Bio.String}}</p>
           </div>
         </div>
         <!-- user profile -->
@@ -66,29 +103,44 @@
         <div>
           <!-- post -->
           <div class="panel panel-default">
+            {{range .myPosts}}
             <div class="panel-body">
-              <p>{{.latestPostByUser}}</p>
+
+              <p>{{.postMessage}}</p>
+              {{.ytEmbedLink}}
+              <img src="{{.postImage}}" class="media-object" alt="Failed to load image :(" style="width: fit-content; height: fit-content;">
+
             </div>
             <div class="panel-footer">
-              <span>posted {{.latestTimeByUser}} by {{.profileId}}</span>
-              <span class="pull-right"><a class="text-danger" href="#">[delete]</a></span>
+              <span>posted {{.postTime}} by {{.posterUsername}}</span>
+              <span class="pull-right"><a class="text-danger" href="/delpost/{{.postId}}">[delete]</a></span>
             </div>
+            <hr>
+            {{end}}
           </div>
           <!-- ./post -->
         </div>
         <!-- ./timeline -->
       </div>
-      <div class="col-md-3">
+
+
+      <div class="col-md-3" style="alignment: right">
+
+
         <!-- friends -->
         <div class="panel panel-default">
           <div class="panel-body">
             <h4>Friends</h4>
+            {{range .friends}}
             <ul>
+
               <li>
-                <a href="#">{{.latestFriendId}}</a>
-                <a class="text-danger" href="#">[unfriend]</a>
+                <a href="user/{{.FriendID}}"><span style="font-weight: bold">{{.FriendID}}</span> <span style="color: #0f0f0f">is your friend since: </span><span style="font-weight: bold">{{.Since}}</span></a>
+                <a class="text-danger" href="unfriend/{{.FriendID}}" onclick="return confirm('Are you sure you want to unfriend {{.FriendID}}?')">[Unfriend]</a>
               </li>
+
             </ul>
+            {{end}}
           </div>
         </div>
         <!-- ./friends -->
@@ -106,5 +158,9 @@
   <!-- ./footer -->
   <script type="text/javascript" src="/js/bootstrap.min.js"></script>
   <script type="text/javascript" src="/js/script.js"></script>
+  <script>
+
+
+  </script>
 </body>
 </html>

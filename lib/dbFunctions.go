@@ -2,6 +2,7 @@ package lib
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgconn"
@@ -66,6 +67,23 @@ func QueryLog(c *gin.Context, strQuery string) (string, error) {
 	return "", err
 }
 
+//QueryUsername func checks if given profileID is exist in DB
+func QueryUsername(ctx context.Context, str string) bool {
+	result, err := conn.Query(ctx, str)
+	defer result.Close()
+	if err != nil {
+		log.Println("Query username conn.query:", err)
+		return false
+	}
+	ok := false
+	for result.Next() {
+		if err := result.Scan(&ok); err != nil || !ok {
+			return false
+		}
+	}
+	return ok
+}
+
 //BringMeProfile function simply brings the profile from DB
 func BringMeProfile(ctx context.Context, username string) (userCred, error) {
 	tempQurryed := userCred{}
@@ -78,10 +96,10 @@ func BringMeProfile(ctx context.Context, username string) (userCred, error) {
 	}
 	tempQurryed.birthday.Time, err = time.Parse("2006-01-02", tempBirthday.Time.Format("2006-01-02"))
 
-	return tempQurryed, nil
+	return tempQurryed, err
 }
 
-//BringMeAvatar function brings avatat from private filesystem
+//BringMeAvatar function brings avatar from private filesystem
 func BringMeAvatar(privateavtPath, username string) (string, error) {
 
 	_, filename := filepath.Split(privateavtPath)
@@ -122,4 +140,110 @@ func BringMeAvatar(privateavtPath, username string) (string, error) {
 	relPath = filepath.ToSlash(relPath)
 
 	return relPath, nil
+}
+
+//BringMeThatProfile function brings the given profile from DB.
+func BringMeThatProfile(ctx context.Context, profileID string) (EuserCred, error) {
+	tempQurryed := EuserCred{}
+	tempBirthday := pgtype.Date{}
+	queryProfileString := fmt.Sprintf("SELECT name, lastname, relationship,school,location,workplace,birthday,bio,avatarpath FROM user_creds WHERE username='%s';", profileID)
+	bringy := conn.QueryRow(ctx, queryProfileString)
+	err = bringy.Scan(&tempQurryed.Name, &tempQurryed.Lastname, &tempQurryed.Relationship, &tempQurryed.School, &tempQurryed.Location, &tempQurryed.Workplace, &tempBirthday, &tempQurryed.Bio, &tempQurryed.AvatarPath)
+	if err != nil {
+		return EuserCred{}, fmt.Errorf("scanning the reloaded user infos from DB is failed:%s", err.Error())
+	}
+	tempQurryed.Birthday.Time, err = time.Parse("2006-01-02", tempBirthday.Time.Format("2006-01-02"))
+
+	return tempQurryed, err
+}
+
+//UnfriendQuery unfriends given thatProfile from username
+func UnfriendQuery(ctx context.Context, username, thatProfile string) error {
+	tempStructFriends, err := BringMeFriends(ctx, username)
+	if err != nil {
+		log.Println("BringmeFriends failed", err)
+		return err
+	}
+	//unfriend as delete from jsonb
+	for i, structFriend := range tempStructFriends {
+		if structFriend.FriendID == thatProfile {
+			removefunc := func() []FriendWhoToBeAdded {
+				newArr := []FriendWhoToBeAdded{}
+				for in, el := range tempStructFriends {
+					if in != i {
+						newArr = append(newArr, el)
+					}
+				}
+				return newArr
+			}
+			tempStructFriends = removefunc()
+			break
+		}
+	}
+	jsonNewFriends, err := json.Marshal(tempStructFriends)
+	if err != nil {
+		log.Println("marshal to new friend struct failed:", err)
+		return err
+	}
+	updateQueryStr := fmt.Sprintf("UPDATE friends SET friendsince='%s'::JSONB WHERE username='%s';", jsonNewFriends, username)
+	_, err = conn.Exec(ctx, updateQueryStr)
+	if err != nil {
+		log.Println("update new friend list failed", err)
+		return err
+	}
+	return nil
+}
+
+//InsertNewFriendRowForUser prepares DB row for username. This is necessary for preventing null error
+func InsertNewFriendRowForUser(ctx context.Context, username string) error {
+	addUsernameIfNotExist := fmt.Sprintf("INSERT INTO friends (username) VALUES ('%s') ON CONFLICT (username) DO NOTHING;", username)
+	_, err = conn.Exec(ctx, addUsernameIfNotExist)
+	if err != nil {
+		log.Println("insert username if not exist query was failed:", err)
+		return err
+	}
+	return nil
+}
+
+//BringMeFriends return friends list as slice of struct
+func BringMeFriends(ctx context.Context, username string) ([]FriendWhoToBeAdded, error) {
+
+	err := InsertNewFriendRowForUser(ctx, username)
+	if err != nil {
+		log.Println("insert username if not exist query was failed:", err)
+		return nil, err
+	}
+
+	getFriends := fmt.Sprintf("SELECT friendsince FROM friends WHERE username='%s';", username)
+	res, err := conn.Query(ctx, getFriends)
+	defer res.Close()
+	if err != nil {
+		log.Println("getFriends query failed", err)
+		return nil, err
+	}
+	tempJSONB := pgtype.JSONB{}
+	for res.Next() {
+		err = res.Scan(&tempJSONB)
+		if err != nil {
+			log.Println("scanrow failed:", err)
+			return nil, err
+		}
+	}
+	tempStructFriends := []FriendWhoToBeAdded{}
+	err = json.Unmarshal(tempJSONB.Bytes, &tempStructFriends)
+	if err != nil {
+		log.Println("unmarshal addfriendsfunc failed:", err)
+		return nil, err
+	}
+	return tempStructFriends, nil
+}
+
+//QueryFriendship investigates whether username is friend with friendUsername or not
+func QueryFriendship(ctx context.Context, username, friendUsername string) bool {
+	queryStr := fmt.Sprintf("SELECT EXISTS(SELECT 1 FROM friends,jsonb_to_recordset(friends.friendsince) AS items(friendid text) WHERE items.friendid = '%s' AND friends.username='%s');", friendUsername, username)
+	ok := QueryUsername(ctx, queryStr) //check that if that profile is your friend or not
+	if !ok {
+		return false
+	}
+	return true
 }

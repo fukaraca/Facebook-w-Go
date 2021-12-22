@@ -3,6 +3,10 @@
 a {
   color: #3b5998;
 }
+.dark-mode {
+    background-color: gray;
+    color: black;
+}
 
 .navbar {
   -webkit-border-radius: 0;
@@ -31,4 +35,12 @@ a {
 .navbar-default .navbar-nav>li>a:focus,
 .navbar-default .navbar-nav>li>a:hover {
   color: #fff;
+}
+
+.upimg {
+  cursor: pointer;
+  height: 3rem;
+  width: 3rem;
+
+
 }
