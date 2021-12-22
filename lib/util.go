@@ -2,10 +2,13 @@ package lib
 
 import (
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
 	"github.com/disintegration/imaging"
+	"io"
 	"log"
 	"mime/multipart"
+	"net/http"
 	"strings"
 )
 
@@ -51,4 +54,28 @@ func ResizeAndSave(file multipart.File, filepath, filename string) error {
 	// Resize srcImage to size = highestRes aspect ratio using the Lanczos filter.
 	dstImage8060 := imaging.Resize(img, int(srcX), int(srcY), imaging.Lanczos)
 	return imaging.Save(dstImage8060, filepath+filename)
+}
+
+//GetYtEmbed function gets embed code from YT oembed Api
+func GetYtEmbed(shortlink string) string {
+
+	reqLink := fmt.Sprintf("https://www.youtube.com/oembed?url=%s&format=json", shortlink)
+	resp, err := http.Get(reqLink)
+	if err != nil {
+		log.Println("Video link json couldn't be get")
+		return "Video can't be loaded!"
+	}
+	defer resp.Body.Close()
+	jsonVideo := YtEmbedJson{}
+	out, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Println("Video link json couldn't be read")
+		return "Video can't be load"
+	}
+	err = json.Unmarshal(out, &jsonVideo)
+	if err != nil {
+		log.Println("Video link json unmarshal failed")
+		return "Video can't be load"
+	}
+	return jsonVideo.Html
 }

@@ -35,6 +35,7 @@ func CheckCookie(c *gin.Context, toBeChecked, userId string) bool {
 }
 
 //todo secure flag!!
+
 //CreateSession creates cookie for users who logged in successfully and returns the Cookie Values(UUID)
 func CreateSession(username string, c *gin.Context) {
 	sessionToken, err := uuid.NewV4()
@@ -63,7 +64,7 @@ func CheckSession(c *gin.Context) bool {
 		log.Println("No cookie error: ", err)
 		return false
 	}
-
+	//tobeCheckedId variable is like supersecret private key
 	if isCookieValid := CheckCookie(c, toBeChecked, toBeCheckedId); !isCookieValid {
 		log.Println("Cookie is not valid", toBeChecked)
 		return false

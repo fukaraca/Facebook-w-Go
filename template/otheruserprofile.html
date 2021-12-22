@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>FaceClone - {{.profileID}}</title>
+
+    <link rel="stylesheet" type="text/css" href="/css/bootstrap.min.css">
+    <link rel="stylesheet" type="text/css" href="/css/style.css">
+</head>
+<body>
+<!-- nav -->
+<nav class="navbar navbar-default">
+    <div class="container-fluid">
+        <div class="navbar-header">
+            <a class="navbar-brand" href="/home">FaceClone</a>
+        </div>
+        <ul class="nav navbar-nav navbar-right">
+            <li><a href="/home">Home</a></li>
+            <li><a href="/profile">Profile</a></li>
+            <li><a href="/logout">Logout</a></li>
+        </ul>
+    </div>
+</nav>
+<!-- ./nav -->
+
+<!-- main -->
+<main class="container">
+
+    <!-- buraya fotoğraflar gelecek-->
+    <div class="row">
+        <div class="col-md-9">
+            <p>fotoğraf alanı</p>
+        </div>
+    </div>
+    <!-- buraya fotoğraflar gelecek-->
+
+    <div class="row">
+        <div class="col-md-3">
+            <!-- edit profile -->
+            <div class="panel panel-default">
+                <div class="panel-body">
+                    <h4><b>About </b>{{.profileID}}</h4>
+
+                        <div class="panel-collapse">
+                            <label >Relationship: {{.profilestruct.Relationship.String}}</label>
+                        </div>
+
+                        <div class="panel-collapse">
+                            <label >School: {{.profilestruct.School.String}}</label>
+                        </div>
+
+
+                        <div class="panel-collapse">
+                            <label >Location: {{.profilestruct.Location.String}}</label>
+                        </div>
+
+
+                        <div class="panel-collapse">
+                            <label >Workplace: {{.profilestruct.Workplace.String}}</label>
+                        </div>
+
+                        <br>
+
+                        <div class="form-group">
+                            <input class="btn btn-primary" id="addfriendbut" type="button" name="addfriend" value="{{.addButtonValue}}" >
+                        </div>
+
+
+                </div>
+            </div>
+            <!-- ./edit profile -->
+        </div>
+
+
+        <div class="col-md-6">
+            <!-- user profile -->
+            <div class="media">
+                <div class="media-left">
+                    <img src="{{.avatarPath}}" class="media-object" alt="Avatar couldn't be loaded" style="max-width: 150px; max-height: 150px;">
+                </div>
+                <div class="media-body">
+                    <h2 class="media-heading">{{.profilestruct.Name.String}} {{.profilestruct.Lastname.String}}</h2>
+                    <p>Bio: {{.profilestruct.Bio.String}}</p>
+                </div>
+            </div>
+            <!-- user profile -->
+
+            <hr>
+
+            <!-- timeline -->
+            <div>
+                <!-- post -->
+                <div class="panel panel-default">
+                    {{range .myPosts}}
+                    <div class="panel-body">
+
+                        <p>{{.postMessage}}</p>
+                        {{.ytEmbedLink}}
+                        <img src="{{.postImage}}" class="media-object" alt="Failed to load image :(" style="width: fit-content; height: fit-content;">
+
+                    </div>
+                    <div class="panel-footer">
+                        <span>posted {{.postTime}} by {{.posterUsername}}</span>
+                        <span class="pull-right"><a class="text-danger" href="/delpost/{{.postId}}">[delete]</a></span>
+                    </div>
+                    <hr>
+                    {{end}}
+                </div>
+                <!-- ./post -->
+            </div>
+            <!-- ./timeline -->
+        </div>
+
+
+        <div class="col-md-3" style="alignment: right">
+
+
+            <!-- friends -->
+            <div class="panel panel-default">
+                <div class="panel-body">
+                    <h4>Friends</h4>
+                    {{range .friends}}
+                    <ul>
+                        <li>
+                            <a href="/user/{{.FriendID}}">Friend with<span style="font-weight: bold"> {{.FriendID}}</span> <span style="color: #0f0f0f"> since: </span><span style="font-weight: bold">{{.Since}}</span></a>
+
+                        </li>
+                    </ul>
+                    {{end}}
+                </div>
+            </div>
+            <!-- ./friends -->
+        </div>
+    </div>
+</main>
+<!-- ./main -->
+
+<!-- footer -->
+<footer class="container text-center">
+    <ul class="nav nav-pills pull-right">
+        <li>FaceClone - Made by @fukaraca</li>
+    </ul>
+</footer>
+<!-- ./footer -->
+<script type="text/javascript" src="/js/bootstrap.min.js"></script>
+<script type="text/javascript" src="/js/script.js"></script>
+<script>
+    if (document.getElementById('addfriendbut').value==="Unfriend") {
+        document.getElementById('addfriendbut').style.backgroundColor="firebrick";
+    }
+</script>
+</body>
+</html>

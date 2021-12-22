@@ -2,10 +2,13 @@ package lib
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/gin-contrib/requestid"
 	"github.com/gin-gonic/gin"
+	"io"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -36,16 +39,6 @@ func Auth(fn gin.HandlerFunc) gin.HandlerFunc {
 
 		fn(c)
 	}
-}
-
-//GetIndex is handler function for homepage or start page todo gerek kalmadı
-func GetIndex(c *gin.Context) {
-	if !CheckSession(c) {
-		c.HTML(http.StatusUnauthorized, "login.html", nil)
-		return
-	}
-
-	GetHome(c)
 }
 
 //PostCheckAuth is the handler function for sign in check : Authentication
@@ -125,18 +118,238 @@ func PostCheckReg(c *gin.Context) {
 
 }
 
+//GetHome function is handler function for GET' ting home page
 func GetHome(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+	username, err := c.Cookie("uid")
+	if err == http.ErrNoCookie {
+		log.Println("No cookie error: ", err)
+		return
+	}
+	queryAllUser := fmt.Sprintf("select username from user_creds;")
+	res, err := conn.Query(ctx, queryAllUser)
 
-	c.HTML(200, "home.html", nil)
+	defer res.Close()
+	users := []string{}
+	for res.Next() {
+		tempUsername := ""
+		err = res.Scan(&tempUsername)
+		if err != nil {
+			log.Println("scan all friend query failed:", err)
+			return
+		}
+		users = append(users, tempUsername)
+	}
+	if err = res.Err(); err != nil {
+		log.Println("query error:", err)
+	}
+	//suggest me 3 random user as friend
+	suggestibles := []string{} //non-friends
+	for _, user := range users {
+		if user != username && !QueryFriendship(ctx, username, user) {
+			suggestibles = append(suggestibles, user)
+		}
+	}
+	rand.Seed(time.Now().UnixNano())
+	toBeSuggested := make(map[int]string)
+
+	for i := 0; i < 3; i++ {
+		randIndex := rand.Intn(len(suggestibles))
+		toBeSuggested[randIndex] = suggestibles[randIndex]
+		if len(toBeSuggested) < 3 && i == 2 {
+			i--
+		}
+	}
+	//show me one of my friends
+	friendsList, err := BringMeFriends(ctx, username)
+
+	c.HTML(http.StatusOK, "home.html", gin.H{
+		"suggestibles": toBeSuggested,
+		"randomFriend": friendsList[rand.Intn(len(friendsList))].FriendID,
+	})
 
 }
 
+//GetProfile is the function for clients profile page
 func GetProfile(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+	username, err := c.Cookie("uid")
+	if err == http.ErrNoCookie {
+		log.Println("No cookie error: ", err)
+		return
+	}
+	querriedFriendList, err := BringMeFriends(ctx, username)
+	if err != nil {
+		log.Println("Bringmefriends query failed:", err)
+	}
 
-	c.HTML(200, "profile.html", gin.H{
-		".profileId": c.Request.URL.Path,
+	querriedProfile, err := BringMeThatProfile(ctx, username)
+	if err != nil {
+		log.Println(err)
+	}
+	relPath, err := BringMeAvatar(querriedProfile.AvatarPath.String, username)
+	if err != nil {
+		log.Println(err)
+	}
+	relPath, _ = filepath.Rel("./user", relPath)
+	relPath = filepath.ToSlash(relPath)
+
+	c.HTML(http.StatusOK, "profile.html", gin.H{
+		"profileID":     username,
+		"avatarPath":    relPath,
+		"profilestruct": querriedProfile,
+		"friends":       querriedFriendList,
 	})
 
+}
+
+//GetProfileByID is the handler function for certain profile page
+func GetProfileByID(c *gin.Context) {
+	username, err := c.Cookie("uid")
+	if err == http.ErrNoCookie {
+		log.Println("No cookie error: ", err)
+		return
+	}
+	profileID := c.Param("profileID")
+	if username == profileID {
+		c.Redirect(http.StatusFound, "/profile")
+	}
+	ctx, cancel := context.WithTimeout(c.Request.Context(), TIMEOUT)
+	defer cancel()
+	queryStr := fmt.Sprintf("SELECT EXISTS(SELECT 1 FROM user_creds WHERE username='%s');", profileID)
+	ok := QueryUsername(ctx, queryStr)
+	if !ok {
+		log.Println("ProfileID couldn't be found in DB")
+		c.Redirect(http.StatusFound, "/userNotFound")
+	}
+
+	querriedFriendList, err := BringMeFriends(ctx, profileID)
+	if err != nil {
+		log.Println("Bringmefriends query failed:", err)
+	}
+	querriedFriendship := QueryFriendship(ctx, username, profileID)
+	addButValue := "Add Friend"
+	if querriedFriendship {
+		addButValue = "Unfriend"
+	}
+	querriedProfile, err := BringMeThatProfile(ctx, profileID)
+	if err != nil {
+		log.Println(err)
+	}
+	relPath, err := BringMeAvatar(querriedProfile.AvatarPath.String, profileID)
+	if err != nil {
+		log.Println(err)
+	}
+	relPath, _ = filepath.Rel("./user", relPath)
+	relPath = filepath.ToSlash(relPath)
+	c.HTML(http.StatusOK, "otheruserprofile.html", gin.H{
+		"profileID":      profileID,
+		"avatarPath":     relPath,
+		"profilestruct":  querriedProfile,
+		"addButtonValue": addButValue,
+		"friends":        querriedFriendList,
+	})
+
+}
+
+//GetUnfriend unfriend handler function for profile page
+func GetUnfriend(c *gin.Context) {
+	username, err := c.Cookie("uid")
+	if err == http.ErrNoCookie {
+		log.Println("No cookie error: ", err)
+		return
+	}
+	profileID := c.Param("profileID")
+	if username == profileID {
+		c.Redirect(http.StatusFound, "/profile")
+	}
+	ctx, cancel := context.WithTimeout(c.Request.Context(), TIMEOUT)
+	defer cancel()
+
+	err = UnfriendQuery(ctx, username, profileID)
+	if err != nil {
+		log.Println("unfriend error1: ", err)
+		return
+	}
+	err = UnfriendQuery(ctx, profileID, username)
+	if err != nil {
+		log.Println("unfriend error2: ", err)
+		return
+	}
+	c.Redirect(http.StatusFound, "/profile")
+}
+
+//PostAddUnfriend is handler func for add or delete some from friends list
+func PostAddUnfriend(c *gin.Context) {
+
+	username, err := c.Cookie("uid")
+	if err == http.ErrNoCookie {
+		log.Println("No cookie error: ", err)
+		return
+	}
+	friend := FriendWhoToBeAdded{}
+
+	err = c.Bind(&friend)
+	if err != nil && err != io.EOF {
+		log.Println("binding json failed:", err)
+		return
+	}
+	if username == friend.FriendID {
+		return
+	}
+	ctx, cancel := context.WithTimeout(c.Request.Context(), TIMEOUT)
+	defer cancel()
+	ok := QueryFriendship(ctx, username, friend.FriendID)
+	if !ok { //add as friend
+		friend.Since = time.Now().Format("2006-01-02")
+		jsonFriend, err := json.Marshal(friend)
+		if err != nil {
+			log.Println("json marshalling failed1:", err)
+			return
+		}
+		err = InsertNewFriendRowForUser(ctx, username)
+		err = InsertNewFriendRowForUser(ctx, friend.FriendID)
+		if err != nil {
+			log.Println("insert username if not exist query was failed:", err)
+			return
+		}
+		//update friends list for both username and thatProfile
+		addFriendString := fmt.Sprintf("UPDATE friends SET friendsince = COALESCE(friendsince, '[]' ::JSONB ) || '[%s]'::JSONB WHERE username='%s';", jsonFriend, username) //jsonb array için {}kullanıyor. JSONB İÇİN []  COALESCE
+		_, err = conn.Exec(ctx, addFriendString)
+		if err != nil {
+			log.Println("update friends list was failed1:", err)
+			return
+		}
+		tempName := friend.FriendID
+		friend.FriendID = username
+		jsonFriend, err = json.Marshal(friend)
+		if err != nil {
+			log.Println("json marshalling failed2:", err)
+			return
+		}
+		addFriendString = fmt.Sprintf("UPDATE friends SET friendsince = COALESCE(friendsince, '[]' ::JSONB ) || '[%s]'::JSONB WHERE username='%s';", jsonFriend, tempName) //jsonb array için {}kullanıyor. JSONB İÇİN []  COALESCE
+		_, err = conn.Exec(ctx, addFriendString)
+		if err != nil {
+			log.Println("update friends list was failed2:", err)
+			return
+		}
+
+		c.String(http.StatusOK, "true")
+		return
+	}
+	//unfriend for both username and thatProfile
+	err = UnfriendQuery(ctx, username, friend.FriendID)
+	if err != nil {
+		log.Println("unfriend failed1", err)
+	}
+	err = UnfriendQuery(ctx, friend.FriendID, username)
+	if err != nil {
+		log.Println("unfriend failed1", err)
+	}
+
+	c.String(http.StatusOK, "false")
 }
 
 //GetEdit function is handler for settings and edit user information page
@@ -164,7 +377,7 @@ func GetEdit(c *gin.Context) {
 		"firstname":     querriedProfile.name.String,
 		"lastname":      querriedProfile.lastname.String,
 		"gender":        querriedProfile.gender.String,
-		"birthday":      querriedProfile.birthday.Time.Format("2006-02-01"),
+		"birthday":      querriedProfile.birthday.Time.Format("2006-01-02"),
 		"mobilenumber":  querriedProfile.mobileNumber.String,
 		"country":       querriedProfile.country.String,
 		"statusMessage": statusMessage,
@@ -182,7 +395,7 @@ func PostUpdateProfile(c *gin.Context) {
 	upFirstname := *Striper(c.PostForm("firstname"))
 	upLastname := *Striper(c.PostForm("lastname"))
 	upGender := *Striper(c.PostForm("gender"))
-	upBirthday := *Striper(c.PostForm("birthday"))
+	upBirthday := *Striper(c.PostForm("birthday")) //year month date is as sequence
 	upMobile := *Striper(c.PostForm("mobilenumber"))
 	upCountry := *Striper(c.PostForm("country"))
 
@@ -192,7 +405,7 @@ func PostUpdateProfile(c *gin.Context) {
 		return
 	}
 	updateQueryString := fmt.Sprintf("UPDATE user_creds SET name = '%s',lastname = '%s',gender = '%s',birthday = '%s',mobilenumber = '%s',country = '%s' WHERE username = '%s';", upFirstname, upLastname, upGender, upBirthday, upMobile, upCountry, username)
-	fmt.Println(updateQueryString) //todo silinecek
+
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 	_, err = conn.Exec(ctx, updateQueryString)
@@ -202,6 +415,7 @@ func PostUpdateProfile(c *gin.Context) {
 	}
 	shortStatusMessage := "Updated successfully!"
 	c.SetCookie("short_status_message", shortStatusMessage, 60, "/", "localhost", false, true)
+
 	c.Redirect(303, "/settings")
 
 }
@@ -254,6 +468,7 @@ func PostUpdateProfilePhoto(c *gin.Context) {
 
 }
 
+//PostChangePassword is the function for changing login password.
 func PostChangePassword(c *gin.Context) {
 	newPassword := *Striper(c.PostForm("newpassword"))
 	oldPassword := *Striper(c.PostForm("oldpassword"))
@@ -306,7 +521,45 @@ func PostChangePassword(c *gin.Context) {
 
 }
 
-//todo chrome da bazen cikis yapmıyor
+//PostDeleteAccount function simply deletes the request related account
+func PostDeleteAccount(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+	confPass := *Striper(c.PostForm("deletepw"))
+
+	username, err := c.Cookie("uid")
+	if err != nil {
+		if err == http.ErrNoCookie {
+			c.SetCookie("short_status_message", "Delete failed:"+err.Error(), 30, "/", "localhost", false, true)
+			c.Redirect(http.StatusFound, "/settings")
+			return
+		}
+	}
+
+	checkPassQuery := fmt.Sprintf("SELECT password FROM user_creds WHERE username LIKE '%s' ;", username)
+	hashedToBeChecked, err := QueryLog(c, checkPassQuery)
+	if err != nil {
+		c.SetCookie("short_status_message", "Something went wrong with DB/Query(pd):!"+err.Error(), 30, "/", "localhost", false, true)
+		c.Redirect(http.StatusFound, "/settings")
+		return
+	}
+	if !CheckPasswordHash(confPass, hashedToBeChecked) {
+		c.SetCookie("short_status_message", "Password is incorrect!", 30, "/", "localhost", false, true)
+		c.Redirect(http.StatusFound, "/settings")
+		return
+	}
+
+	deleteAccQuery := fmt.Sprintf("DELETE FROM user_creds WHERE username LIKE '%s' ;", username)
+	_, err = conn.Exec(ctx, deleteAccQuery)
+	if err != nil {
+		c.SetCookie("short_status_message", "Delete failed!"+err.Error(), 30, "/", "localhost", false, true)
+		c.Redirect(http.StatusFound, "/settings")
+		return
+	}
+
+	c.Redirect(http.StatusFound, "/logout")
+
+}
 
 //GetLogout is handler function for logout
 func GetLogout(c *gin.Context) {

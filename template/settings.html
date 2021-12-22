@@ -61,7 +61,7 @@
 
             <div class="form-group">
               <label class="required" >Birthday:</label>
-              <input class="form-control" type="date" name="birthday" placeholder="" value="{{.birthday}}"required>
+              <input class="form-control" type="date" name="birthday" placeholder="" value="{{.birthday}}" required>
             </div>
 
             <div class="form-group">
@@ -129,6 +129,21 @@
             <input class="btn btn-primary" type="submit" name="change_password" value="Change">
           </div>
         </form>
+        <hr>
+        <hr> <!--"return confirm('Are you sure you want to delete your account?')"-->
+        <h4>Delete Account</h4>
+        <form method="post" action="/deleteaccount" >
+          <div class="form-group">
+            <input class="btn btn-primary" type="button" name="fakedelete" value="Delete" onclick="hideDelete()">
+          </div>
+          <div class="form-group" id="hidiv" style="display: none">
+            <input class="form-control" type="password" name="deletepw" placeholder="Enter your password" value="" required>
+            <br>
+            <input style="background-color: red;color: black" class="btn btn-primary" type="submit" name="deleteme" value="Ok just delete" onclick="return confirm('Are you sure you want to delete your account?')">
+          </div>
+        </form>
+
+
       </div>
     </div>
     <!-- ./friends -->
