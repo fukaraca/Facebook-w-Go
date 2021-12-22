@@ -41,16 +41,6 @@ func Auth(fn gin.HandlerFunc) gin.HandlerFunc {
 	}
 }
 
-//GetIndex is handler function for homepage or start page todo gerek kalmadı
-func GetIndex(c *gin.Context) {
-	if !CheckSession(c) {
-		c.HTML(http.StatusUnauthorized, "login.html", nil)
-		return
-	}
-
-	GetHome(c)
-}
-
 //PostCheckAuth is the handler function for sign in check : Authentication
 func PostCheckAuth(c *gin.Context) {
 	if CheckSession(c) {
@@ -205,7 +195,7 @@ func GetProfile(c *gin.Context) {
 	}
 	relPath, _ = filepath.Rel("./user", relPath)
 	relPath = filepath.ToSlash(relPath)
-	//Exported = querriedProfile //todo silince
+
 	c.HTML(http.StatusOK, "profile.html", gin.H{
 		"profileID":     username,
 		"avatarPath":    relPath,
@@ -319,7 +309,7 @@ func PostAddUnfriend(c *gin.Context) {
 			log.Println("json marshalling failed1:", err)
 			return
 		}
-		err = InsertNewFriendRowForUser(ctx, username) //todo silinecek asagısı
+		err = InsertNewFriendRowForUser(ctx, username)
 		err = InsertNewFriendRowForUser(ctx, friend.FriendID)
 		if err != nil {
 			log.Println("insert username if not exist query was failed:", err)

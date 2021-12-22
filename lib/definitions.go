@@ -12,7 +12,7 @@ import (
 //Global definition will run before main() and init()
 var R *gin.Engine
 var cache *redis.Client
-var Ctx = context.Background() //context.Context todo
+var Ctx = context.Background()
 var conn *pgx.Conn
 var err error
 
