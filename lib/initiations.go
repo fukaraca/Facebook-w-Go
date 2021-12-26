@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"
 	"github.com/jackc/pgx/v4"
+	"github.com/spf13/viper"
 	"io"
 	"log"
 	"os"
@@ -16,6 +17,7 @@ import (
 
 //InitServer function initiates general stuff
 func InitServer() {
+
 	//logger middleware teed to log.file
 	logfile, err := os.OpenFile("./logs/log.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
@@ -44,9 +46,9 @@ func InitServer() {
 //CreateRedisClient function creates a Redis Client
 func CreateRedisClient() {
 	client := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
-		Password: "",
-		DB:       0,
+		Addr:     redis_Host + redis_Port,
+		Password: redis_Password,
+		DB:       redis_DB,
 	})
 	pong, err := client.Ping(Ctx).Result()
 	if err != nil {
@@ -58,7 +60,7 @@ func CreateRedisClient() {
 
 //ConnectDB function opens a connection to PSQL DB
 func ConnectDB() {
-	var databaseURL = fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", HOST, PORT, USER, PASSWORD, DATABASE)
+	var databaseURL = fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", db_Host, db_Port, db_User, db_Password, db_Name)
 	conn, err = pgx.Connect(Ctx, databaseURL)
 	if err != nil {
 		log.Println("DB connection error:", err)
@@ -69,4 +71,28 @@ func ConnectDB() {
 		log.Println("Ping to DB error:", err)
 	}
 
+}
+
+func setEnv() *viper.Viper {
+	sE := viper.New()
+	sE.AddConfigPath("./config")
+	sE.SetConfigName("config")
+	sE.SetConfigType("env")
+	err := sE.ReadInConfig()
+	if err != nil {
+		log.Println("viper config.env loading err:", err)
+	}
+	return sE
+}
+
+func setVars() *viper.Viper {
+	sE := viper.New()
+	sE.AddConfigPath("./config")
+	sE.SetConfigName("vars")
+	sE.SetConfigType("yaml")
+	err := sE.ReadInConfig()
+	if err != nil {
+		log.Println("viper vars.yaml loading err:", err)
+	}
+	return sE
 }

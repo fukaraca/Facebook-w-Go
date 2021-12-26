@@ -2,7 +2,6 @@ package lib
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgconn"
@@ -157,90 +156,87 @@ func BringMeThatProfile(ctx context.Context, profileID string) (EuserCred, error
 	return tempQurryed, err
 }
 
-//UnfriendQuery unfriends given thatProfile from username
+//UnfriendQuery unfriends given thatProfile from username and vice-versa
 func UnfriendQuery(ctx context.Context, username, thatProfile string) error {
-	tempStructFriends, err := BringMeFriends(ctx, username)
-	if err != nil {
-		log.Println("BringmeFriends failed", err)
-		return err
-	}
-	//unfriend as delete from jsonb
-	for i, structFriend := range tempStructFriends {
-		if structFriend.FriendID == thatProfile {
-			removefunc := func() []FriendWhoToBeAdded {
-				newArr := []FriendWhoToBeAdded{}
-				for in, el := range tempStructFriends {
-					if in != i {
-						newArr = append(newArr, el)
-					}
-				}
-				return newArr
-			}
-			tempStructFriends = removefunc()
-			break
-		}
-	}
-	jsonNewFriends, err := json.Marshal(tempStructFriends)
-	if err != nil {
-		log.Println("marshal to new friend struct failed:", err)
-		return err
-	}
-	updateQueryStr := fmt.Sprintf("UPDATE friends SET friendsince='%s'::JSONB WHERE username='%s';", jsonNewFriends, username)
+
+	updateQueryStr := fmt.Sprintf("DELETE FROM relations WHERE username='%s' AND friendname='%s';\n DELETE FROM relations WHERE username='%s' AND friendname='%s';", username, thatProfile, thatProfile, username)
 	_, err = conn.Exec(ctx, updateQueryStr)
 	if err != nil {
-		log.Println("update new friend list failed", err)
-		return err
-	}
-	return nil
-}
-
-//InsertNewFriendRowForUser prepares DB row for username. This is necessary for preventing null error
-func InsertNewFriendRowForUser(ctx context.Context, username string) error {
-	addUsernameIfNotExist := fmt.Sprintf("INSERT INTO friends (username) VALUES ('%s') ON CONFLICT (username) DO NOTHING;", username)
-	_, err = conn.Exec(ctx, addUsernameIfNotExist)
-	if err != nil {
-		log.Println("insert username if not exist query was failed:", err)
+		log.Println("delete from relations table failed", err)
 		return err
 	}
 	return nil
 }
 
 //BringMeFriends return friends list as slice of struct
-func BringMeFriends(ctx context.Context, username string) ([]FriendWhoToBeAdded, error) {
+func BringMeFriends(ctx context.Context, username string) ([]Relationship, error) {
 
-	err := InsertNewFriendRowForUser(ctx, username)
-	if err != nil {
-		log.Println("insert username if not exist query was failed:", err)
-		return nil, err
-	}
+	getFriends := fmt.Sprintf("SELECT friendname,since FROM relations WHERE username='%s';", username)
 
-	getFriends := fmt.Sprintf("SELECT friendsince FROM friends WHERE username='%s';", username)
 	res, err := conn.Query(ctx, getFriends)
 	defer res.Close()
 	if err != nil {
 		log.Println("getFriends query failed", err)
 		return nil, err
 	}
-	tempJSONB := pgtype.JSONB{}
-	for res.Next() {
-		err = res.Scan(&tempJSONB)
+	tempRelationship := []Relationship{}
+	for i := 0; res.Next(); i++ {
+		tempRel := Relationship{}
+
+		err = res.Scan(&tempRel.Friendname, &tempRel.Since.Time)
 		if err != nil {
 			log.Println("scanrow failed:", err)
 			return nil, err
 		}
+		tempRelationship = append(tempRelationship, tempRel)
 	}
-	tempStructFriends := []FriendWhoToBeAdded{}
-	err = json.Unmarshal(tempJSONB.Bytes, &tempStructFriends)
+
+	return tempRelationship, nil
+}
+
+//FindMeSuggestibleFriends brings 3 random friends who is not friend of the username from DB
+func FindMeSuggestibleFriendsAndAlsoOneOfMine(ctx context.Context, username string) ([]string, string, error) {
+	suggestStr := fmt.Sprintf("SELECT username FROM user_creds AS uc WHERE uc.username NOT IN (SELECT friendname FROM relations WHERE username = '%s') AND uc.username <> '%s' ORDER BY random() LIMIT 3;", username, username)
+
+	res, err := conn.Query(ctx, suggestStr)
 	if err != nil {
-		log.Println("unmarshal addfriendsfunc failed:", err)
-		return nil, err
+		log.Println("query error1:", err)
+		return nil, "", err
 	}
-	return tempStructFriends, nil
+	defer res.Close()
+	toBeSuggested := []string{}
+	for res.Next() {
+		tempSuggestion := ""
+		err = res.Scan(&tempSuggestion)
+		if err != nil {
+			log.Println("scan suggest friend query failed:", err)
+			return nil, "", err
+		}
+		toBeSuggested = append(toBeSuggested, tempSuggestion)
+	}
+	if err = res.Err(); err != nil {
+		log.Println("query error2:", err)
+		return nil, "", err
+	}
+	randomFriend := ""
+	getFriends := fmt.Sprintf("SELECT friendname FROM relations WHERE username='%s' ORDER BY random() LIMIT 1;", username)
+	row := conn.QueryRow(ctx, getFriends)
+	err = row.Scan(&randomFriend)
+	if err != nil && err != pgx.ErrNoRows {
+		log.Println("getFriends query failed", err)
+		return toBeSuggested, "", err
+	} else if err == pgx.ErrNoRows {
+		log.Println("no friend", err)
+		return toBeSuggested, "", err
+	}
+	return toBeSuggested, randomFriend, nil
+
 }
 
 //QueryFriendship investigates whether username is friend with friendUsername or not
 func QueryFriendship(ctx context.Context, username, friendUsername string) bool {
-	queryStr := fmt.Sprintf("SELECT EXISTS(SELECT 1 FROM friends,jsonb_to_recordset(friends.friendsince) AS items(friendid text) WHERE items.friendid = '%s' AND friends.username='%s');", friendUsername, username)
+
+	queryStr := fmt.Sprintf("SELECT EXISTS(SELECT 1 FROM relations WHERE username = '%s' AND friendname='%s');", username, friendUsername)
 	ok := QueryUsername(ctx, queryStr) //check that if that profile is your friend or not
 	if !ok {
 		return false

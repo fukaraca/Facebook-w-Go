@@ -2,13 +2,12 @@ package lib
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/gin-contrib/requestid"
 	"github.com/gin-gonic/gin"
+	"github.com/gofrs/uuid"
 	"io"
 	"log"
-	"math/rand"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -41,81 +40,14 @@ func Auth(fn gin.HandlerFunc) gin.HandlerFunc {
 	}
 }
 
-//PostCheckAuth is the handler function for sign in check : Authentication
-func PostCheckAuth(c *gin.Context) {
-	if CheckSession(c) {
+//GetLogout is handler function for logout
+func GetLogout(c *gin.Context) {
+	ok, err := DeleteSession(c)
+	if err != nil || !ok {
+		log.Println("session couldn't be deleted:", err)
 		return
 	}
-	logUserName := *Striper(c.PostForm("usernameL"))
-	logPassword := *Striper(c.PostForm("passwordL"))
-	//check login credential
-	checkLoginQuery := fmt.Sprintf("SELECT password FROM user_creds WHERE username LIKE '%s' ;", logUserName)
-	hashedToBeChecked, err := QueryLog(c, checkLoginQuery)
-	if err != nil {
-		loginMessage := err.Error() + " Something went wrong with DB/Query!"
-		c.HTML(http.StatusBadGateway, "login.html", gin.H{
-			"messageL": loginMessage,
-		})
-		return
-	}
-	if !CheckPasswordHash(logPassword, hashedToBeChecked) {
-		loginMessage := "Password or Username is incorrect"
-		c.HTML(http.StatusForbidden, "login.html", gin.H{
-			"messageL": loginMessage,
-		})
-		return
-	}
-	lastLogTime := time.Now().Format(time.RFC3339)
-	insertLastLog := fmt.Sprintf("UPDATE user_creds SET lastlogin = '%s' WHERE username = '%s';", lastLogTime, logUserName)
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
-	defer cancel()
-	_, err = conn.Exec(ctx, insertLastLog)
-	if err != nil {
-		log.Println("last login time update has error:", err)
-	}
-
-	CreateSession(logUserName, c)
-	/*	c.HTML(http.StatusOK, "home.html", gin.H{
-		"message": "Welcome " + logUserName,
-	})*/
-	log.Println("Req ID:", requestid.Get(c))
-	c.Redirect(http.StatusMovedPermanently, "/home")
-}
-
-//PostCheckReg is handler function to Register new user
-func PostCheckReg(c *gin.Context) {
-	if CheckSession(c) {
-		return
-	}
-	regUserName := *Striper(c.PostForm("usernameReg"))
-	tempPass := *Striper(c.PostForm("passwordReg"))
-	regPassword, err := HashPassword(tempPass)
-	regEmail := *Striper(c.PostForm("emailReg"))
-	regCreatedOn := time.Now().Format(time.RFC3339)
-	//insert new users if not exist
-	checkRegQuery := fmt.Sprintf("INSERT INTO user_creds (user_id,username,password,email,createdon) VALUES (nextval('user_id_seq'),'%s','%s','%s','%s');", regUserName, regPassword, regEmail, regCreatedOn)
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
-	defer cancel()
-	res, err := conn.Exec(ctx, checkRegQuery)
-
-	messageR := "New account created successfully! You can login anytime."
-	//if any error occurs
-	if err != nil {
-		messageR = QueryErr(err)
-		log.Println("Registration error :", messageR)
-		c.HTML(http.StatusUnauthorized, "login.html", gin.H{
-			"messageR": messageR,
-		})
-		return
-	}
-	//if it's OK
-	log.Println("Req ID:", requestid.Get(c))
-	log.Println("register Query:", res.String())
-
-	c.HTML(http.StatusOK, "login.html", gin.H{
-		"messageR": messageR,
-	})
-
+	c.Redirect(http.StatusFound, "/login")
 }
 
 //GetHome function is handler function for GET' ting home page
@@ -127,46 +59,20 @@ func GetHome(c *gin.Context) {
 		log.Println("No cookie error: ", err)
 		return
 	}
-	queryAllUser := fmt.Sprintf("select username from user_creds;")
-	res, err := conn.Query(ctx, queryAllUser)
+	statusMessage, _ := c.Cookie("short_status_message")
+	c.SetCookie("short_status_message", "", -1, "/", "localhost", false, true)
 
-	defer res.Close()
-	users := []string{}
-	for res.Next() {
-		tempUsername := ""
-		err = res.Scan(&tempUsername)
-		if err != nil {
-			log.Println("scan all friend query failed:", err)
-			return
-		}
-		users = append(users, tempUsername)
+	//suggest me 3 random user as friend and also bring one of my friends
+	toBeSuggested, randomFriend, err := FindMeSuggestibleFriendsAndAlsoOneOfMine(ctx, username)
+	if err != nil {
+		log.Println("Suggestible friend query failed", err)
+		randomFriend = "above for future friend"
 	}
-	if err = res.Err(); err != nil {
-		log.Println("query error:", err)
-	}
-	//suggest me 3 random user as friend
-	suggestibles := []string{} //non-friends
-	for _, user := range users {
-		if user != username && !QueryFriendship(ctx, username, user) {
-			suggestibles = append(suggestibles, user)
-		}
-	}
-	rand.Seed(time.Now().UnixNano())
-	toBeSuggested := make(map[int]string)
-
-	for i := 0; i < 3; i++ {
-		randIndex := rand.Intn(len(suggestibles))
-		toBeSuggested[randIndex] = suggestibles[randIndex]
-		if len(toBeSuggested) < 3 && i == 2 {
-			i--
-		}
-	}
-	//show me one of my friends
-	friendsList, err := BringMeFriends(ctx, username)
 
 	c.HTML(http.StatusOK, "home.html", gin.H{
-		"suggestibles": toBeSuggested,
-		"randomFriend": friendsList[rand.Intn(len(friendsList))].FriendID,
+		"suggestibles":  toBeSuggested,
+		"randomFriend":  randomFriend,
+		"statusMessage": statusMessage,
 	})
 
 }
@@ -273,83 +179,8 @@ func GetUnfriend(c *gin.Context) {
 		log.Println("unfriend error1: ", err)
 		return
 	}
-	err = UnfriendQuery(ctx, profileID, username)
-	if err != nil {
-		log.Println("unfriend error2: ", err)
-		return
-	}
+
 	c.Redirect(http.StatusFound, "/profile")
-}
-
-//PostAddUnfriend is handler func for add or delete some from friends list
-func PostAddUnfriend(c *gin.Context) {
-
-	username, err := c.Cookie("uid")
-	if err == http.ErrNoCookie {
-		log.Println("No cookie error: ", err)
-		return
-	}
-	friend := FriendWhoToBeAdded{}
-
-	err = c.Bind(&friend)
-	if err != nil && err != io.EOF {
-		log.Println("binding json failed:", err)
-		return
-	}
-	if username == friend.FriendID {
-		return
-	}
-	ctx, cancel := context.WithTimeout(c.Request.Context(), TIMEOUT)
-	defer cancel()
-	ok := QueryFriendship(ctx, username, friend.FriendID)
-	if !ok { //add as friend
-		friend.Since = time.Now().Format("2006-01-02")
-		jsonFriend, err := json.Marshal(friend)
-		if err != nil {
-			log.Println("json marshalling failed1:", err)
-			return
-		}
-		err = InsertNewFriendRowForUser(ctx, username)
-		err = InsertNewFriendRowForUser(ctx, friend.FriendID)
-		if err != nil {
-			log.Println("insert username if not exist query was failed:", err)
-			return
-		}
-		//update friends list for both username and thatProfile
-		addFriendString := fmt.Sprintf("UPDATE friends SET friendsince = COALESCE(friendsince, '[]' ::JSONB ) || '[%s]'::JSONB WHERE username='%s';", jsonFriend, username) //jsonb array için {}kullanıyor. JSONB İÇİN []  COALESCE
-		_, err = conn.Exec(ctx, addFriendString)
-		if err != nil {
-			log.Println("update friends list was failed1:", err)
-			return
-		}
-		tempName := friend.FriendID
-		friend.FriendID = username
-		jsonFriend, err = json.Marshal(friend)
-		if err != nil {
-			log.Println("json marshalling failed2:", err)
-			return
-		}
-		addFriendString = fmt.Sprintf("UPDATE friends SET friendsince = COALESCE(friendsince, '[]' ::JSONB ) || '[%s]'::JSONB WHERE username='%s';", jsonFriend, tempName) //jsonb array için {}kullanıyor. JSONB İÇİN []  COALESCE
-		_, err = conn.Exec(ctx, addFriendString)
-		if err != nil {
-			log.Println("update friends list was failed2:", err)
-			return
-		}
-
-		c.String(http.StatusOK, "true")
-		return
-	}
-	//unfriend for both username and thatProfile
-	err = UnfriendQuery(ctx, username, friend.FriendID)
-	if err != nil {
-		log.Println("unfriend failed1", err)
-	}
-	err = UnfriendQuery(ctx, friend.FriendID, username)
-	if err != nil {
-		log.Println("unfriend failed1", err)
-	}
-
-	c.String(http.StatusOK, "false")
 }
 
 //GetEdit function is handler for settings and edit user information page
@@ -382,11 +213,113 @@ func GetEdit(c *gin.Context) {
 		"country":       querriedProfile.country.String,
 		"statusMessage": statusMessage,
 		"avatarPath":    relPath,
-
-		/*		"userStatus":,
-				"userName":username,
-				"avatarPath":*/
 	})
+}
+
+//PostIt function handles posting service
+func PostIt(c *gin.Context) {
+	username, err := c.Cookie("uid")
+	if err == http.ErrNoCookie {
+		log.Println("No cookie error: ", err)
+		return
+	}
+	ctx, cancel := context.WithTimeout(c.Request.Context(), TIMEOUT)
+	defer cancel()
+	shortStatusMessage := ""
+
+	post := PostThatBeSaved{}
+	post.Postername = username
+	tempPostID, err := uuid.NewV4()
+	log.Println("v4 uuid generate failed:", err)
+	post.PostId = tempPostID.String()
+	post.PostTime = time.Now()
+	//.Format("2006-01-02 03:04:05")
+	post.PostMessage = c.PostForm("postmessage")
+
+	//get youtube embed link if any exist in post message
+	if ytLink, ok := SearchForYoutube(post.PostMessage); ok {
+		tempLink, oki := GetYtEmbed(ytLink)
+		if !oki && tempLink == "invalidurl" {
+			shortStatusMessage = fmt.Sprintf("%sinvalid youtube url:", shortStatusMessage)
+			c.SetCookie("short_status_message", shortStatusMessage, 60, "/", Server_Host, false, true)
+		} else {
+			post.PostYtEmbedLink = tempLink
+		}
+	}
+
+	//process and upload image if there is any
+	imgToBeUploaded, header, err := c.Request.FormFile("postimage")
+	if err != nil || header.Size == 0 {
+		log.Println("image upload failed or no such file:", err)
+	} else { //if there is image to upload
+		filename := username + RandomString(4) + filepath.Ext(header.Filename)
+		filePathString := fmt.Sprintf("./private/assets/postImages/%s/", username)
+		if err = os.MkdirAll(filePathString, 0666); err != nil {
+			log.Println("filepath for post images couldn't be created")
+			shortStatusMessage = fmt.Sprintf("%s\npost image couldn't be uploaded:%s", shortStatusMessage, err.Error())
+			c.SetCookie("short_status_message", shortStatusMessage, 60, "/", Server_Host, false, true)
+			c.Redirect(http.StatusFound, "/home")
+		}
+		if err = ResizeAndSave(imgToBeUploaded, filePathString, filename); err != nil {
+			shortStatusMessage = fmt.Sprintf("%s\npost image couldn't be uploaded:%s", shortStatusMessage, err.Error())
+			c.SetCookie("short_status_message", "post image couldn't be uploaded:"+err.Error(), 60, "/", Server_Host, false, true)
+			c.Redirect(http.StatusFound, "/home")
+		}
+		post.PostImageFilepath = filePathString + filename
+		defer imgToBeUploaded.Close()
+	}
+
+	addPostString := fmt.Sprintf("INSERT INTO postsTable (post_id, postername, post_message, post_time, post_yt_embed_link, post_image_filepath) VALUES ('%s','%s','%s','%s','%s','%s');", post.PostId, post.Postername, post.PostMessage, post.PostTime, post.PostYtEmbedLink, post.PostImageFilepath)
+	if _, err = conn.Exec(ctx, addPostString); err != nil {
+		log.Println("add post to DB was failed:", err)
+		return
+	}
+
+	c.Redirect(http.StatusFound, "/home")
+}
+
+//PostAddUnfriend is handler func for add or delete some from friends list
+func PostAddUnfriend(c *gin.Context) {
+
+	username, err := c.Cookie("uid")
+	if err == http.ErrNoCookie {
+		log.Println("No cookie error: ", err)
+		return
+	}
+	friend := Relationship{}
+
+	err = c.Bind(&friend)
+	if err != nil && err != io.EOF {
+		log.Println("binding json failed:", err)
+		return
+	}
+	if username == friend.Friendname {
+		return
+	}
+	ctx, cancel := context.WithTimeout(c.Request.Context(), TIMEOUT)
+	defer cancel()
+	ok := QueryFriendship(ctx, username, friend.Friendname)
+	if !ok { //add as friend
+		friend.Since.Time = time.Now()
+		friend.Username = username
+
+		addFriendString := fmt.Sprintf("INSERT INTO relations (username,friendname,since) VALUES ('%s','%s','%s');\nINSERT INTO relations (username,friendname,since) VALUES ('%s','%s','%s');", friend.Username, friend.Friendname, friend.Since.Time.Format("2006-01-02"), friend.Friendname, friend.Username, friend.Since.Time.Format("2006-01-02")) //jsonb array için {}kullanıyor. JSONB İÇİN []  COALESCE
+		_, err = conn.Exec(ctx, addFriendString)
+		if err != nil {
+			log.Println("update friends list was failed1:", err)
+			return
+		}
+
+		c.String(http.StatusOK, "true")
+		return
+	}
+	//unfriend for both username and thatProfile
+	err = UnfriendQuery(ctx, username, friend.Friendname)
+	if err != nil {
+		log.Println("unfriend failed1", err)
+	}
+
+	c.String(http.StatusOK, "false")
 }
 
 //PostUpdateProfile function handles settings page in order to update user informations
@@ -406,7 +339,7 @@ func PostUpdateProfile(c *gin.Context) {
 	}
 	updateQueryString := fmt.Sprintf("UPDATE user_creds SET name = '%s',lastname = '%s',gender = '%s',birthday = '%s',mobilenumber = '%s',country = '%s' WHERE username = '%s';", upFirstname, upLastname, upGender, upBirthday, upMobile, upCountry, username)
 
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), TIMEOUT)
 	defer cancel()
 	_, err = conn.Exec(ctx, updateQueryString)
 	if err != nil {
@@ -443,14 +376,14 @@ func PostUpdateProfilePhoto(c *gin.Context) {
 	err = os.MkdirAll(filePathString, 0666)
 	if err != nil {
 		log.Println("filepath for avatar couldn't be created")
-		c.SetCookie("short_status_message", "avatar photo couldn't be uploaded:"+err.Error(), 60, "/", "localhost", false, true)
+		c.SetCookie("short_status_message", "avatar photo couldn't be uploaded:"+err.Error(), 60, "/", Server_Host, false, true)
 		return
 	}
 
 	//resize and save file
 	err = ResizeAndSave(picToBeUploaded, filePathString, filename)
 	if err != nil {
-		c.SetCookie("short_status_message", "avatar photo couldn't be uploaded:"+err.Error(), 60, "/", "localhost", false, true)
+		c.SetCookie("short_status_message", "avatar photo couldn't be uploaded:"+err.Error(), 60, "/", Server_Host, false, true)
 		return
 	}
 
@@ -548,9 +481,16 @@ func PostDeleteAccount(c *gin.Context) {
 		c.Redirect(http.StatusFound, "/settings")
 		return
 	}
-
-	deleteAccQuery := fmt.Sprintf("DELETE FROM user_creds WHERE username LIKE '%s' ;", username)
+	deleteAccQuery := fmt.Sprintf("DELETE FROM user_creds WHERE username = '%s' ;", username)
 	_, err = conn.Exec(ctx, deleteAccQuery)
+	if err != nil {
+		c.SetCookie("short_status_message", "Delete failed!"+err.Error(), 30, "/", "localhost", false, true)
+		c.Redirect(http.StatusFound, "/settings")
+		return
+	}
+	//delete from relations table
+	deleteRelQuery := fmt.Sprintf("DELETE FROM relations WHERE username = '%s' or friendname = '%s' ;", username, username)
+	_, err = conn.Exec(ctx, deleteRelQuery)
 	if err != nil {
 		c.SetCookie("short_status_message", "Delete failed!"+err.Error(), 30, "/", "localhost", false, true)
 		c.Redirect(http.StatusFound, "/settings")
@@ -561,12 +501,79 @@ func PostDeleteAccount(c *gin.Context) {
 
 }
 
-//GetLogout is handler function for logout
-func GetLogout(c *gin.Context) {
-	ok, err := DeleteSession(c)
-	if err != nil || !ok {
-		log.Println("session couldn't be deleted:", err)
+//PostCheckAuth is the handler function for sign in check : Authentication
+func PostCheckAuth(c *gin.Context) {
+	if CheckSession(c) {
 		return
 	}
-	c.Redirect(http.StatusFound, "/login")
+	logUserName := *Striper(c.PostForm("usernameL"))
+	logPassword := *Striper(c.PostForm("passwordL"))
+	//check login credential
+	checkLoginQuery := fmt.Sprintf("SELECT password FROM user_creds WHERE username LIKE '%s' ;", logUserName)
+	hashedToBeChecked, err := QueryLog(c, checkLoginQuery)
+	if err != nil {
+		loginMessage := err.Error() + " Something went wrong with DB/Query!"
+		c.HTML(http.StatusBadGateway, "login.html", gin.H{
+			"messageL": loginMessage,
+		})
+		return
+	}
+	if !CheckPasswordHash(logPassword, hashedToBeChecked) {
+		loginMessage := "Password or Username is incorrect"
+		c.HTML(http.StatusForbidden, "login.html", gin.H{
+			"messageL": loginMessage,
+		})
+		return
+	}
+	lastLogTime := time.Now().Format(time.RFC3339)
+	insertLastLog := fmt.Sprintf("UPDATE user_creds SET lastlogin = '%s' WHERE username = '%s';", lastLogTime, logUserName)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+	_, err = conn.Exec(ctx, insertLastLog)
+	if err != nil {
+		log.Println("last login time update has error:", err)
+	}
+
+	CreateSession(logUserName, c)
+	/*	c.HTML(http.StatusOK, "home.html", gin.H{
+		"message": "Welcome " + logUserName,
+	})*/
+	log.Println("Req ID:", requestid.Get(c))
+	c.Redirect(http.StatusMovedPermanently, "/home")
+}
+
+//PostCheckReg is handler function to Register new user
+func PostCheckReg(c *gin.Context) {
+	if CheckSession(c) {
+		return
+	}
+	regUserName := *Striper(c.PostForm("usernameReg"))
+	tempPass := *Striper(c.PostForm("passwordReg"))
+	regPassword, err := HashPassword(tempPass)
+	regEmail := *Striper(c.PostForm("emailReg"))
+	regCreatedOn := time.Now().Format(time.RFC3339)
+	//insert new users if not exist
+	checkRegQuery := fmt.Sprintf("INSERT INTO user_creds (user_id,username,password,email,createdon) VALUES (nextval('user_id_seq'),'%s','%s','%s','%s');", regUserName, regPassword, regEmail, regCreatedOn)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+	res, err := conn.Exec(ctx, checkRegQuery)
+
+	messageR := "New account created successfully! You can login anytime."
+	//if any error occurs
+	if err != nil {
+		messageR = QueryErr(err)
+		log.Println("Registration error :", messageR)
+		c.HTML(http.StatusUnauthorized, "login.html", gin.H{
+			"messageR": messageR,
+		})
+		return
+	}
+	//if it's OK
+	log.Println("Req ID:", requestid.Get(c))
+	log.Println("register Query:", res.String())
+
+	c.HTML(http.StatusOK, "login.html", gin.H{
+		"messageR": messageR,
+	})
+
 }

@@ -32,10 +32,10 @@
     <div class="col-md-3">
       <!-- profile brief -->
       <div class="panel panel-default">
-        <label>{{.message}}</label>
+        <label></label>
         <div class="panel-body">
           <h4>{{.profileId}}</h4>
-          <p>{{.bio}}</p>
+          <p>{{.statusMessage}}</p>
         </div>
       </div>
       <!-- ./profile brief -->
@@ -57,7 +57,7 @@
     </div>
     <div class="col-md-6">
       <!-- post form -->
-      <form method="post" action="" enctype="multipart/form-data" >
+      <form method="post" action="/postIt" enctype="multipart/form-data" >
         <div class="input-group"  >
           <textarea contenteditable="true" class="form-control" name="postmessage" placeholder="Make a post..."></textarea>
           <span class="input-group-btn">

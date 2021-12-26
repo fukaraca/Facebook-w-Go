@@ -121,7 +121,7 @@
                     {{range .friends}}
                     <ul>
                         <li>
-                            <a href="/user/{{.FriendID}}">Friend with<span style="font-weight: bold"> {{.FriendID}}</span> <span style="color: #0f0f0f"> since: </span><span style="font-weight: bold">{{.Since}}</span></a>
+                            <a href="/user/{{.Friendname}}">Friend with<span style="font-weight: bold"> {{.Friendname}}</span> <span style="color: #0f0f0f"> since: </span><span style="font-weight: bold">{{.Since.Time.Format "02/01/2006"}}</span></a>
 
                         </li>
                     </ul>
