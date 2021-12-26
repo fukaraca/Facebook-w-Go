@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/disintegration/imaging"
+	"github.com/mingrammer/commonregex"
 	"io"
 	"log"
 	"mime/multipart"
 	"net/http"
+	"regexp"
 	"strings"
 )
 
@@ -29,8 +31,6 @@ func RandomString(n int) string {
 	}
 	return fmt.Sprintf("%X", randSuffix)
 }
-
-const highestRes = float32(640)
 
 //ResizeAndSave function resize and saves the form input file to filepath with the given filename.
 func ResizeAndSave(file multipart.File, filepath, filename string) error {
@@ -56,26 +56,51 @@ func ResizeAndSave(file multipart.File, filepath, filename string) error {
 	return imaging.Save(dstImage8060, filepath+filename)
 }
 
+//SearchForYoutube function checks the string str for any valid youtube links and returns the first encounter with boolean result
+func SearchForYoutube(str string) (string, bool) {
+	linkler := commonregex.Links(str)
+	if len(linkler) == 0 {
+		return "", false
+	}
+
+	for _, link := range linkler {
+		ok, err := regexp.MatchString(`(youtube)|(youtu\.be)`, link)
+		if err != nil {
+			log.Println("regexp match string failed:", err)
+			return "err", false
+		}
+		if ok {
+			return link, ok
+		}
+	}
+
+	return "", false
+}
+
 //GetYtEmbed function gets embed code from YT oembed Api
-func GetYtEmbed(shortlink string) string {
+func GetYtEmbed(shortlink string) (string, bool) {
 
 	reqLink := fmt.Sprintf("https://www.youtube.com/oembed?url=%s&format=json", shortlink)
 	resp, err := http.Get(reqLink)
 	if err != nil {
-		log.Println("Video link json couldn't be get")
-		return "Video can't be loaded!"
+		log.Println("Video link json couldn't be get", err)
+		return "", false
 	}
 	defer resp.Body.Close()
 	jsonVideo := YtEmbedJson{}
 	out, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Println("Video link json couldn't be read")
-		return "Video can't be load"
+		log.Println("Video link json couldn't be read", err)
+		return "", false
 	}
+	if string(out) == "Not Found" {
+		return "invalidurl", false
+	}
+
 	err = json.Unmarshal(out, &jsonVideo)
 	if err != nil {
-		log.Println("Video link json unmarshal failed")
-		return "Video can't be load"
+		log.Println("Video link json unmarshal failed", err)
+		return "Video can't be loaded", false
 	}
-	return jsonVideo.Html
+	return jsonVideo.Html, true
 }

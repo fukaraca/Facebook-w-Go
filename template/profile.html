@@ -135,8 +135,8 @@
             <ul>
 
               <li>
-                <a href="user/{{.FriendID}}"><span style="font-weight: bold">{{.FriendID}}</span> <span style="color: #0f0f0f">is your friend since: </span><span style="font-weight: bold">{{.Since}}</span></a>
-                <a class="text-danger" href="unfriend/{{.FriendID}}" onclick="return confirm('Are you sure you want to unfriend {{.FriendID}}?')">[Unfriend]</a>
+                <a href="user/{{.Friendname}}"><span style="font-weight: bold">{{.Friendname}}</span> <span style="color: #0f0f0f">is your friend since: </span><span style="font-weight: bold">{{.Since.Time.Format "02/01/2006"}}</span></a>
+                <a class="text-danger" href="unfriend/{{.Friendname}}" onclick="return confirm('Are you sure you want to unfriend {{.Friendname}}?')">[Unfriend]</a>
               </li>
 
             </ul>

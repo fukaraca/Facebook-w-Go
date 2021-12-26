@@ -6,10 +6,6 @@ import (
 )
 
 func main() {
-	lib.InitServer()
-	lib.CreateRedisClient()
-	lib.ConnectDB()
-
 	//routes
 	lib.R.NoRoute(lib.NoRoute404)
 	lib.R.GET("/logout", lib.Auth(lib.GetLogout))
@@ -20,6 +16,7 @@ func main() {
 	lib.R.GET("/user/:profileID", lib.Auth(lib.GetProfileByID))
 	lib.R.GET("/unfriend/:profileID", lib.Auth(lib.GetUnfriend))
 
+	lib.R.POST("/postIt", lib.Auth(lib.PostIt))
 	lib.R.POST("/addunfriend", lib.Auth(lib.PostAddUnfriend))
 	lib.R.POST("/updateprofile", lib.Auth(lib.PostUpdateProfile))
 	lib.R.POST("/updatepp", lib.Auth(lib.PostUpdateProfilePhoto))
@@ -28,6 +25,14 @@ func main() {
 	lib.R.POST("/checkReg", lib.PostCheckReg)
 	lib.R.POST("/deleteaccount", lib.Auth(lib.PostDeleteAccount))
 
-	log.Fatalln("Router encountered and error while main.Run:", lib.R.Run(":8080"))
+	log.Fatalln("Router encountered and error while main.Run:", lib.R.Run(lib.Server_Port))
 
 }
+
+func init() {
+	lib.InitServer()
+	lib.CreateRedisClient()
+	lib.ConnectDB()
+}
+
+//todo api ile postid,user posts fetch edilecek

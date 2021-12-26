@@ -16,15 +16,24 @@ var Ctx = context.Background()
 var conn *pgx.Conn
 var err error
 
-const (
-	HOST          = "127.0.0.1"
-	PORT          = "5432"
-	DATABASE      = "dbForFaceClone"
-	USER          = "postgres"
-	PASSWORD      = "123456"
-	defaultAvatar = "img/my_avatar.png" //avatar relative path
-	TIMEOUT       = 5 * time.Second
-)
+var GetEnv = setEnv()
+var GetVars = setVars()
+
+var highestRes = float32(GetEnv.GetInt("HIGHEST_RESOLUTION"))
+var defaultAvatar = GetEnv.GetString("DEFAULT_AVATAR_PATH")
+var TIMEOUT = GetEnv.GetDuration("TIMEOUT_CTX")
+var db_Host = GetEnv.GetString("DB_HOST")
+var db_Port = GetEnv.GetString("DB_PORT")
+var db_Name = GetEnv.GetString("DB_NAME")
+var db_User = GetEnv.GetString("DB_USER")
+var db_Password = GetEnv.GetString("DB_PASSWORD")
+var redis_Host = GetEnv.GetString("REDIS_HOST")
+var redis_Port = GetEnv.GetString("REDIS_PORT")
+var redis_Password = GetEnv.GetString("REDIS_PASSWORD")
+var redis_DB = GetEnv.GetInt("REDIS_DB")
+
+var Server_Host = GetEnv.GetString("SERVER_HOST")
+var Server_Port = GetEnv.GetString("SERVER_PORT")
 
 type userCred struct {
 	userID       int                `conn:"user_id"`
@@ -78,4 +87,19 @@ type EuserCred struct {
 type FriendWhoToBeAdded struct {
 	FriendID string `json:"friendid"`
 	Since    string `json:"since"`
+}
+
+type Relationship struct {
+	Username   string      `conn:"username"`
+	Friendname string      `conn:"friendname" json:"friendID"`
+	Since      pgtype.Date `conn:"since" json:"since"`
+}
+
+type PostThatBeSaved struct {
+	Postername        string    `json:"postername"`
+	PostId            string    `json:"post_id"` //uuid typeı olabilir todo
+	PostTime          time.Time `json:"post_time"`
+	PostMessage       string    `json:"post_message"`
+	PostImageFilepath string    `json:"post_image_filepath"`
+	PostYtEmbedLink   string    `json:"post_yt_embed_link"`
 }
