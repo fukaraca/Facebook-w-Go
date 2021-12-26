@@ -17,9 +17,10 @@
 # Go workspace file
 go.work
 
-config/
+config/*
 private/
 web/asset/
 logs/
 
 .gitignore
+/config/
