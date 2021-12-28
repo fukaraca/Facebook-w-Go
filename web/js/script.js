@@ -23,32 +23,27 @@ function hideDelete() {
     }
 }
 
-function uploadImage() {
-    document.getElementById("postimage").click() ;
-    console.log("deneme");
-}
+
 function darkMode() {
     let element = document.body;
     element.classList.toggle("dark-mode");
 }
+function uploadImage() {
+    document.getElementById("postimage").click() ;
+}
 
 
-httpRequest = new XMLHttpRequest();
-document.querySelector("#addfriendbut").onclick = function() {
-    addUnfriend();
-};
 function addUnfriend(){
+    httpRequest = new XMLHttpRequest();
     let url="/addunfriend"
     let friendID = window.location.pathname.split("/").pop();
     httpRequest.onreadystatechange = alertContents;
     httpRequest.open("POST", url,true);
     httpRequest.setRequestHeader('Content-Type', 'application/json');
-    httpRequest.send(JSON.stringify({"friendid":friendID}))
-
+    httpRequest.send(JSON.stringify({"friendid":friendID}));
 }
-
 function alertContents() {
-    let addbut=document.getElementById("addfriendbut")
+    let addbut=document.getElementById("addfriendbut");
     if (httpRequest.readyState === httpRequest.DONE) {
         if (httpRequest.status === 200) {
             let response = httpRequest.responseText;
@@ -59,3 +54,36 @@ function alertContents() {
         }
     }
 }
+
+let page = 1;
+function loadMore(url){
+    ajaxLoadMore = new XMLHttpRequest();
+    page+=1
+    url=url+page
+    ajaxLoadMore.onreadystatechange=loadContents;
+    ajaxLoadMore.responseType="json";
+    ajaxLoadMore.open("GET",url,true);
+    ajaxLoadMore.send()
+
+}
+
+function loadContents(){
+    if (ajaxLoadMore.readyState === ajaxLoadMore.DONE) {
+        if (ajaxLoadMore.status === 200) {
+            let response = ajaxLoadMore.response; /* responseXML olabilr*/
+
+            response.LoadMorePost.forEach(function (element){
+                document.getElementById('loadmoredivid').insertAdjacentHTML("beforeend", element);
+            })
+
+
+
+        } else {
+            console.log('There was a problem with the request.');
+        }
+    }
+}
+
+
+
+

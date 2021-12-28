@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 )
 
@@ -69,12 +70,20 @@ func GetHome(c *gin.Context) {
 		randomFriend = "above for future friend"
 	}
 
+	latestPosts, err := BringMeSomePosts(ctx, username)
+
+	if err != nil {
+		log.Println("loading of latest posts was failed", err)
+		statusMessage = fmt.Sprintf("%s\nloading of latest posts was failed:%s", statusMessage, err.Error())
+	}
+
 	c.HTML(http.StatusOK, "home.html", gin.H{
+		"profileId":     username,
 		"suggestibles":  toBeSuggested,
 		"randomFriend":  randomFriend,
 		"statusMessage": statusMessage,
+		"posts":         latestPosts,
 	})
-
 }
 
 //GetProfile is the function for clients profile page
@@ -102,11 +111,18 @@ func GetProfile(c *gin.Context) {
 	relPath, _ = filepath.Rel("./user", relPath)
 	relPath = filepath.ToSlash(relPath)
 
+	myLatestPosts, err := BringMeSomeMyPosts(ctx, username)
+
+	if err != nil {
+		log.Println("loading of my latest posts was failed", err)
+	}
+
 	c.HTML(http.StatusOK, "profile.html", gin.H{
 		"profileID":     username,
 		"avatarPath":    relPath,
 		"profilestruct": querriedProfile,
 		"friends":       querriedFriendList,
+		"posts":         myLatestPosts,
 	})
 
 }
@@ -150,12 +166,19 @@ func GetProfileByID(c *gin.Context) {
 	}
 	relPath, _ = filepath.Rel("./user", relPath)
 	relPath = filepath.ToSlash(relPath)
+
+	hisLatestPosts, err := BringMeSomeMyPosts(ctx, profileID)
+
+	if err != nil {
+		log.Println("loading of my latest posts was failed", err)
+	}
 	c.HTML(http.StatusOK, "otheruserprofile.html", gin.H{
 		"profileID":      profileID,
 		"avatarPath":     relPath,
 		"profilestruct":  querriedProfile,
 		"addButtonValue": addButValue,
 		"friends":        querriedFriendList,
+		"posts":          hisLatestPosts,
 	})
 
 }
@@ -216,6 +239,90 @@ func GetEdit(c *gin.Context) {
 	})
 }
 
+func GetLoadMoreAtHome(c *gin.Context) {
+
+	username, err := c.Cookie("uid")
+	if err == http.ErrNoCookie {
+		log.Println("No cookie error: ", err)
+		return
+	}
+	ctx, cancel := context.WithTimeout(c.Request.Context(), TIMEOUT)
+	defer cancel()
+
+	pageStr := c.Param("page")
+	pageNum, err := strconv.Atoi(pageStr)
+	if err != nil {
+		log.Println("strconvAtoi at GetLoadMore failed", err)
+		return
+	}
+
+	loadMorePost, err := LoadMoreWithOffset(ctx, username, pageNum)
+	if err != nil {
+		log.Println("load more post failed:", err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"LoadMorePost": loadMorePost,
+	})
+
+}
+
+func GetLoadMoreAtProfile(c *gin.Context) {
+
+	username, err := c.Cookie("uid")
+	if err == http.ErrNoCookie {
+		log.Println("No cookie error: ", err)
+		return
+	}
+	ctx, cancel := context.WithTimeout(c.Request.Context(), TIMEOUT)
+	defer cancel()
+
+	pageStr := c.Param("page")
+	pageNum, err := strconv.Atoi(pageStr)
+	if err != nil {
+		log.Println("strconvAtoi at GetLoadMorehome failed", err)
+		return
+	}
+	loadMorePost, err := LoadMoreWithOffsetAllSameUsername(ctx, username, pageNum)
+	if err != nil {
+		log.Println("load more post failed:", err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"LoadMorePost": loadMorePost,
+	})
+
+}
+
+//GetLoadMoreByUsername
+func GetLoadMoreByUsername(c *gin.Context) {
+
+	_, err := c.Cookie("uid")
+	if err == http.ErrNoCookie {
+		log.Println("No cookie error: ", err)
+		return
+	}
+	ctx, cancel := context.WithTimeout(c.Request.Context(), TIMEOUT)
+	defer cancel()
+
+	pageStr := c.Param("page")
+	pageNum, err := strconv.Atoi(pageStr)
+	if err != nil {
+		log.Println("strconvAtoi at Get Load More username failed", err)
+		return
+	}
+	thirdUsername := c.Param("profileID")
+	loadMorePost, err := LoadMoreWithOffsetAllSameUsername(ctx, thirdUsername, pageNum)
+	if err != nil {
+		log.Println("load more post failed:", err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"LoadMorePost": loadMorePost,
+	})
+
+}
+
 //PostIt function handles posting service
 func PostIt(c *gin.Context) {
 	username, err := c.Cookie("uid")
@@ -230,7 +337,9 @@ func PostIt(c *gin.Context) {
 	post := PostThatBeSaved{}
 	post.Postername = username
 	tempPostID, err := uuid.NewV4()
-	log.Println("v4 uuid generate failed:", err)
+	if err != nil {
+		log.Println("v4 uuid generate failed:", err)
+	}
 	post.PostId = tempPostID.String()
 	post.PostTime = time.Now()
 	//.Format("2006-01-02 03:04:05")
@@ -266,10 +375,10 @@ func PostIt(c *gin.Context) {
 			c.Redirect(http.StatusFound, "/home")
 		}
 		post.PostImageFilepath = filePathString + filename
+
 		defer imgToBeUploaded.Close()
 	}
-
-	addPostString := fmt.Sprintf("INSERT INTO postsTable (post_id, postername, post_message, post_time, post_yt_embed_link, post_image_filepath) VALUES ('%s','%s','%s','%s','%s','%s');", post.PostId, post.Postername, post.PostMessage, post.PostTime, post.PostYtEmbedLink, post.PostImageFilepath)
+	addPostString := fmt.Sprintf("INSERT INTO posts (post_id, postername, post_message, post_time, post_yt_embed_link, post_image_filepath) VALUES ('%s','%s','%s','%s','%s','%s');", post.PostId, post.Postername, post.PostMessage, post.PostTime.Format(time.RFC3339), post.PostYtEmbedLink, post.PostImageFilepath)
 	if _, err = conn.Exec(ctx, addPostString); err != nil {
 		log.Println("add post to DB was failed:", err)
 		return

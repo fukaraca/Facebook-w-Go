@@ -102,24 +102,33 @@
         <!-- timeline -->
         <div>
           <!-- post -->
-          <div class="panel panel-default">
-            {{range .myPosts}}
+          {{range .posts}}
+          <div class="panel panel-default" style="border-style:dot-dot-dash;border-width:thick;border-bottom-color:#618685">
             <div class="panel-body">
-
-              <p>{{.postMessage}}</p>
-              {{.ytEmbedLink}}
-              <img src="{{.postImage}}" class="media-object" alt="Failed to load image :(" style="width: fit-content; height: fit-content;">
-
+              {{.PostImageFilepath}}
+              <br>
+              <p>{{.PostMessage}}</p>
+              <br>
+              {{.PostYtEmbedLink}}
             </div>
             <div class="panel-footer">
-              <span>posted {{.postTime}} by {{.posterUsername}}</span>
-              <span class="pull-right"><a class="text-danger" href="/delpost/{{.postId}}">[delete]</a></span>
+              <span>posted at <b>{{.PostTime.Format "15:04:05 02/01/2006"}}</b> by {{.Postername}}</span>
+              <span class="pull-right"><a class="text-danger" href="/delpost/{{.PostId}}">[delete]</a></span>
             </div>
-            <hr>
-            {{end}}
           </div>
+          <hr>
+          {{end}}
           <!-- ./post -->
         </div>
+
+        <!--loadmore-->
+        <div id="loadmoredivid">
+        </div>
+        <div class="form-group">
+          <input class="btn btn-primary" id="loadmoreid" type="button" name="loadmore" value="Load more" onclick="loadMore('/loadmoreprofile/')" >
+        </div> <span id="loadstatusbybuttonid" style="display: none"> </span>
+        <!--loadmore-->
+
         <!-- ./timeline -->
       </div>
 
@@ -136,7 +145,7 @@
 
               <li>
                 <a href="user/{{.Friendname}}"><span style="font-weight: bold">{{.Friendname}}</span> <span style="color: #0f0f0f">is your friend since: </span><span style="font-weight: bold">{{.Since.Time.Format "02/01/2006"}}</span></a>
-                <a class="text-danger" href="unfriend/{{.Friendname}}" onclick="return confirm('Are you sure you want to unfriend {{.Friendname}}?')">[Unfriend]</a>
+                <a class="text-danger" href="unfriend/{{.Friendname}}" onclick="return confirm('Are you sure you want to unfriend {{.Friendname}}?')"> [Unfriend]</a>
               </li>
 
             </ul>

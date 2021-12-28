@@ -6,6 +6,7 @@ import (
 )
 
 func main() {
+	//delete post delete yazısı vs
 	//routes
 	lib.R.NoRoute(lib.NoRoute404)
 	lib.R.GET("/logout", lib.Auth(lib.GetLogout))
@@ -15,6 +16,9 @@ func main() {
 	lib.R.GET("/settings", lib.Auth(lib.GetEdit))
 	lib.R.GET("/user/:profileID", lib.Auth(lib.GetProfileByID))
 	lib.R.GET("/unfriend/:profileID", lib.Auth(lib.GetUnfriend))
+	lib.R.GET("/loadmorehome/:page", lib.Auth(lib.GetLoadMoreAtHome))
+	lib.R.GET("/loadmoreprofile/:page", lib.Auth(lib.GetLoadMoreAtProfile))
+	lib.R.GET("/loadmore/:profileID/:page", lib.Auth(lib.GetLoadMoreByUsername))
 
 	lib.R.POST("/postIt", lib.Auth(lib.PostIt))
 	lib.R.POST("/addunfriend", lib.Auth(lib.PostAddUnfriend))

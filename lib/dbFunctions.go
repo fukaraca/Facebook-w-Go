@@ -7,6 +7,7 @@ import (
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgtype"
 	"github.com/jackc/pgx/v4"
+	"html/template"
 	"io"
 	"log"
 	"os"
@@ -141,6 +142,50 @@ func BringMeAvatar(privateavtPath, username string) (string, error) {
 	return relPath, nil
 }
 
+//BringMeImage function brings images from private filesystem
+func BringMeImage(privateImgPath, username string) (string, error) {
+
+	_, filename := filepath.Split(privateImgPath)
+	publicImagePath := fmt.Sprintf("./web/asset/postImages/%s/%s", username, filename)
+	publicImageDirPath := fmt.Sprintf("./web/asset/postImages/%s", username)
+	//file exists
+	if _, err := os.Stat(publicImagePath); err == nil {
+		relPath, _ := filepath.Rel("./web", publicImagePath)
+		relPath = filepath.ToSlash(relPath)
+		return relPath, nil
+	}
+	// file does *not* exist
+	postImage, err := os.OpenFile(privateImgPath, os.O_RDONLY, 0444)
+	if err != nil { //todo default?
+		return "", fmt.Errorf("private image file couldn't be opened:%s", err.Error())
+	}
+	defer postImage.Close()
+
+	//filePathString := fmt.Sprintf("./web/asset/avatars/%s/", username)
+	err = os.MkdirAll(publicImageDirPath, 0666)
+	if err != nil { //todo defaule?
+		return defaultAvatar, fmt.Errorf("public image dir couldn't be created:%s", err.Error())
+	}
+
+	tempImage, err := os.Create(publicImagePath) //0 boyutlu file oluşturuluyor
+	if err != nil {                              //todo
+		return defaultAvatar, fmt.Errorf("public avatar zero-file couldn't be created:%s", err.Error())
+	}
+	defer tempImage.Close()
+
+	_, err = io.Copy(tempImage, postImage) //0 boyutlu dosyaya kopyalanır
+	if err != nil {                        //todo
+		return defaultAvatar, fmt.Errorf("avatar file couldn't be copied:%s", err.Error())
+	}
+
+	//get relative path for avatar
+	relPath, _ := filepath.Rel("./web", publicImagePath)
+	relPath = filepath.ToSlash(relPath)
+	fmt.Println(err)
+
+	return relPath, nil
+}
+
 //BringMeThatProfile function brings the given profile from DB.
 func BringMeThatProfile(ctx context.Context, profileID string) (EuserCred, error) {
 	tempQurryed := EuserCred{}
@@ -166,6 +211,189 @@ func UnfriendQuery(ctx context.Context, username, thatProfile string) error {
 		return err
 	}
 	return nil
+}
+
+//BringMeSomeHisPosts function returns posts from certain username
+func BringMeSomeMyPosts(ctx context.Context, username string) ([]PostThatBeTemplated, error) {
+	bringMePostsStr := fmt.Sprintf("SELECT * FROM posts WHERE postername='%s' ORDER BY post_time DESC LIMIT 10;", username)
+	rows, err := conn.Query(ctx, bringMePostsStr)
+	defer rows.Close()
+	if err != nil {
+		log.Println("get my posts query failed", err)
+		return nil, err
+	}
+	tempBroughtPosts := []PostThatBeTemplated{}
+	for i := 0; rows.Next(); i++ {
+		tempPost := PostThatBeTemplated{}
+
+		err = rows.Scan(&tempPost.PostId, &tempPost.Postername, &tempPost.PostMessage, &tempPost.PostTime, &tempPost.PostYtEmbedLink, &tempPost.PostImageFilepath)
+		if err != nil {
+			log.Println("scan row bring me some of my posts failed:", err)
+			return nil, err
+		}
+		if tempPost.PostImageFilepath != "" {
+			tempImagePath, err := BringMeImage(string(tempPost.PostImageFilepath), username)
+			if err == nil {
+				tempPost.PostImageFilepath = template.HTML(fmt.Sprintf("<img src=\"\\%s\" class=\"media-object\" alt=\"Failed to load post image :(\" style=\"max-width: 95%%; max-height: 95%%;\">", tempImagePath))
+
+			}
+		}
+		tempBroughtPosts = append(tempBroughtPosts, tempPost)
+	}
+	return tempBroughtPosts, nil
+}
+
+//BringMeSomeHisPosts brings posts for user/profileID page
+func BringMeSomeHisPosts(ctx context.Context, username string) ([]PostThatBeTemplated, error) {
+	bringMePostsStr := fmt.Sprintf("SELECT * FROM posts WHERE postername='%s' ORDER BY post_time DESC LIMIT 10;", username)
+	rows, err := conn.Query(ctx, bringMePostsStr)
+	defer rows.Close()
+	if err != nil {
+		log.Println("get my posts query failed", err)
+		return nil, err
+	}
+	tempBroughtPosts := []PostThatBeTemplated{}
+	for i := 0; rows.Next(); i++ {
+		tempPost := PostThatBeTemplated{}
+
+		err = rows.Scan(&tempPost.PostId, &tempPost.Postername, &tempPost.PostMessage, &tempPost.PostTime, &tempPost.PostYtEmbedLink, &tempPost.PostImageFilepath)
+		if err != nil {
+			log.Println("scan row bring me some of my posts failed:", err)
+			return nil, err
+		}
+		if tempPost.PostImageFilepath != "" {
+			tempImagePath, err := BringMeImage(string(tempPost.PostImageFilepath), username)
+			if err == nil {
+				tempPost.PostImageFilepath = template.HTML(fmt.Sprintf("<img src=\"%s\" class=\"media-object\" alt=\"Failed to load post image :(\" style=\"max-width: 95%%; max-height: 95%%;\">", tempImagePath))
+
+			}
+		}
+		tempBroughtPosts = append(tempBroughtPosts, tempPost)
+	}
+	return tempBroughtPosts, nil
+}
+
+//BringMeSomePosts function returns posts from certain username and also from his friends
+func BringMeSomePosts(ctx context.Context, username string) ([]PostThatBeTemplated, error) {
+	bringMePostsStr := fmt.Sprintf("SELECT * FROM posts WHERE postername IN (SELECT friendname FROM relations WHERE username ='%s' UNION SELECT '%s'::VARCHAR(50)) ORDER BY post_time DESC LIMIT 10;", username, username)
+	rows, err := conn.Query(ctx, bringMePostsStr)
+	defer rows.Close()
+	if err != nil {
+		log.Println("getFriends query failed", err)
+		return nil, err
+	}
+	tempBroughtPosts := []PostThatBeTemplated{}
+	for i := 0; rows.Next(); i++ {
+		tempPost := PostThatBeTemplated{}
+
+		err = rows.Scan(&tempPost.PostId, &tempPost.Postername, &tempPost.PostMessage, &tempPost.PostTime, &tempPost.PostYtEmbedLink, &tempPost.PostImageFilepath)
+		if err != nil {
+			log.Println("scanrow bringmesomeposts failed:", err)
+			return nil, err
+		}
+		if tempPost.PostImageFilepath != "" {
+			tempImagePath, err := BringMeImage(string(tempPost.PostImageFilepath), username)
+			if err == nil {
+				tempPost.PostImageFilepath = template.HTML(fmt.Sprintf("<img src=\"%s\" class=\"media-object\" alt=\"Failed to load post image :(\" style=\"max-width: 95%%; max-height: 95%%;\">", tempImagePath))
+
+			}
+		}
+		tempBroughtPosts = append(tempBroughtPosts, tempPost)
+	}
+	return tempBroughtPosts, nil
+}
+
+//LoadMoreWithOffset function returns posts from certain username and also from his friends as paginated
+func LoadMoreWithOffset(ctx context.Context, username string, pageNum int) ([]ToBeLoadedMore, error) {
+	offset := 10 * (pageNum - 1)
+	loadMoreQueryStr := fmt.Sprintf("SELECT * FROM posts WHERE postername IN (SELECT friendname FROM relations WHERE username ='%s' UNION SELECT '%s'::VARCHAR(50)) ORDER BY post_time DESC OFFSET %d LIMIT 10;", username, username, offset)
+	rows, err := conn.Query(ctx, loadMoreQueryStr)
+	defer rows.Close()
+	if err != nil {
+		log.Println("getFriends query failed", err)
+		return nil, err
+	}
+	tempListToBeLoadedMore := []ToBeLoadedMore{}
+	for i := 0; rows.Next(); i++ {
+		tempPost := PostThatBeSaved{}
+
+		err = rows.Scan(&tempPost.PostId, &tempPost.Postername, &tempPost.PostMessage, &tempPost.PostTime, &tempPost.PostYtEmbedLink, &tempPost.PostImageFilepath)
+		if err != nil {
+			log.Println("scanrow bringmesomeposts failed:", err)
+			return nil, err
+		}
+		if tempPost.PostImageFilepath != "" {
+			tempImagePath, err := BringMeImage(string(tempPost.PostImageFilepath), username)
+			if err == nil {
+				tempPost.PostImageFilepath = fmt.Sprintf("<img src=\"%s\" class=\"media-object\" alt=\"Failed to load post image :(\" style=\"max-width: 95%%; max-height: 95%%;\">", tempImagePath)
+			}
+		}
+		tempLoadMore := ToBeLoadedMore(fmt.Sprintf(`
+<div class="panel panel-default" style="border-style:dot-dot-dash;border-width:thick;border-bottom-color:#618685">
+          <div class="panel-body">
+            %s 
+            <br>
+            <p>%s</p> 
+            <br>
+            %s  
+          </div>
+          <div class="panel-footer">
+            <span>posted at <b>%s</b> by %s</span> 
+            <span class="pull-right"><a class="text-danger" href="/delpost/%s">[delete]</a></span>
+          </div>
+        </div>
+        <hr>
+`, tempPost.PostImageFilepath, tempPost.PostMessage, tempPost.PostYtEmbedLink, tempPost.PostTime.Format("15:04:05 02/01/2006"), tempPost.Postername, tempPost.PostId))
+
+		tempListToBeLoadedMore = append(tempListToBeLoadedMore, tempLoadMore)
+	}
+	return tempListToBeLoadedMore, nil
+}
+
+//LoadMoreWithOffsetAllSameUsername function returns posts from certain username as paginated
+func LoadMoreWithOffsetAllSameUsername(ctx context.Context, username string, pageNum int) ([]ToBeLoadedMore, error) {
+	offset := 10 * (pageNum - 1)
+	loadMoreQueryStr := fmt.Sprintf("SELECT * FROM posts WHERE postername='%s' ORDER BY post_time DESC OFFSET %d LIMIT 10;", username, offset)
+	rows, err := conn.Query(ctx, loadMoreQueryStr)
+	defer rows.Close()
+	if err != nil {
+		log.Println("load friends post query failed", err)
+		return nil, err
+	}
+	tempListToBeLoadedMore := []ToBeLoadedMore{}
+	for i := 0; rows.Next(); i++ {
+		tempPost := PostThatBeSaved{}
+
+		err = rows.Scan(&tempPost.PostId, &tempPost.Postername, &tempPost.PostMessage, &tempPost.PostTime, &tempPost.PostYtEmbedLink, &tempPost.PostImageFilepath)
+		if err != nil {
+			log.Println("scanrow bring me some his posts failed:", err)
+			return nil, err
+		}
+		if tempPost.PostImageFilepath != "" {
+			tempImagePath, err := BringMeImage(tempPost.PostImageFilepath, username)
+			if err == nil {
+				tempPost.PostImageFilepath = fmt.Sprintf("<img src=\"\\%s\" class=\"media-object\" alt=\"Failed to load post image :(\" style=\"max-width: 95%%; max-height: 95%%;\">", tempImagePath)
+			}
+		}
+		tempLoadMore := ToBeLoadedMore(fmt.Sprintf(`
+<div class="panel panel-default" style="border-style:dot-dot-dash;border-width:thick;border-bottom-color:#618685">
+          <div class="panel-body">
+            %s 
+            <br>
+            <p>%s</p> 
+            <br>
+            %s  
+          </div>
+          <div class="panel-footer">
+            <span>posted at <b>%s</b> by %s</span>
+          </div>
+        </div>
+        <hr>
+`, tempPost.PostImageFilepath, tempPost.PostMessage, tempPost.PostYtEmbedLink, tempPost.PostTime.Format("15:04:05 02/01/2006"), tempPost.Postername))
+
+		tempListToBeLoadedMore = append(tempListToBeLoadedMore, tempLoadMore)
+	}
+	return tempListToBeLoadedMore, nil
 }
 
 //BringMeFriends return friends list as slice of struct
@@ -194,10 +422,10 @@ func BringMeFriends(ctx context.Context, username string) ([]Relationship, error
 	return tempRelationship, nil
 }
 
-//FindMeSuggestibleFriends brings 3 random friends who is not friend of the username from DB
+//FindMeSuggestibleFriendsAndAlsoOneOfMine brings 3 random friends who is not friend of the username from DB and also one of his friends for "missed me?" div
 func FindMeSuggestibleFriendsAndAlsoOneOfMine(ctx context.Context, username string) ([]string, string, error) {
 	suggestStr := fmt.Sprintf("SELECT username FROM user_creds AS uc WHERE uc.username NOT IN (SELECT friendname FROM relations WHERE username = '%s') AND uc.username <> '%s' ORDER BY random() LIMIT 3;", username, username)
-
+	// select * from posts where username in (select friendname from relations where username ='%s' union select '%s'::varchar(50);) ORDER BY post_time DESC LIMIT 10;
 	res, err := conn.Query(ctx, suggestStr)
 	if err != nil {
 		log.Println("query error1:", err)

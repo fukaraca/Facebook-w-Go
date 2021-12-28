@@ -7,6 +7,7 @@
       <excludeFolder url="file://$MODULE_DIR$/web/asset" />
       <excludeFolder url="file://$MODULE_DIR$/private" />
       <excludeFolder url="file://$MODULE_DIR$/logs" />
+      <excludeFolder url="file://$MODULE_DIR$/config" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />

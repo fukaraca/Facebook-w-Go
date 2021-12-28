@@ -61,7 +61,7 @@
                         <br>
 
                         <div class="form-group">
-                            <input class="btn btn-primary" id="addfriendbut" type="button" name="addfriend" value="{{.addButtonValue}}" >
+                            <input class="btn btn-primary" id="addfriendbut" type="button" name="addfriend" value="{{.addButtonValue}}" onclick="addUnfriend()">
                         </div>
 
 
@@ -89,24 +89,32 @@
             <!-- timeline -->
             <div>
                 <!-- post -->
-                <div class="panel panel-default">
-                    {{range .myPosts}}
+                {{range .posts}}
+                <div class="panel panel-default" style="border-style:dot-dot-dash;border-width:thick;border-bottom-color:#618685">
                     <div class="panel-body">
-
-                        <p>{{.postMessage}}</p>
-                        {{.ytEmbedLink}}
-                        <img src="{{.postImage}}" class="media-object" alt="Failed to load image :(" style="width: fit-content; height: fit-content;">
-
+                        {{.PostImageFilepath}}
+                        <br>
+                        <p>{{.PostMessage}}</p>
+                        <br>
+                        {{.PostYtEmbedLink}}
                     </div>
                     <div class="panel-footer">
-                        <span>posted {{.postTime}} by {{.posterUsername}}</span>
-                        <span class="pull-right"><a class="text-danger" href="/delpost/{{.postId}}">[delete]</a></span>
+                        <span>posted at <b>{{.PostTime.Format "15:04:05 02/01/2006"}}</b> by {{.Postername}}</span>
                     </div>
-                    <hr>
-                    {{end}}
                 </div>
+                <hr>
+                {{end}}
                 <!-- ./post -->
             </div>
+
+            <!--loadmore-->
+            <div id="loadmoredivid">
+            </div>
+            <div class="form-group">
+                <input class="btn btn-primary" id="loadmoreid" type="button" name="loadmore" value="Load more" onclick="loadMore('/loadmore/{{.profileID}}/')" >
+            </div> <span id="loadstatusbybuttonid" style="display: none"> </span>
+            <!--loadmore-->
+
             <!-- ./timeline -->
         </div>
 
