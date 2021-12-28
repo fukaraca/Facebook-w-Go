@@ -96,7 +96,7 @@ func DeleteSession(c *gin.Context) (bool, error) {
 	c.SetCookie("session_token", "", -1, "/", "localhost", false, true)
 	c.SetCookie("uid", "", -1, "/", "localhost", false, true)
 	c.SetCookie("short_status_message", "", -1, "/", "localhost", false, true)
-	err = os.RemoveAll("./web/asset/avatars")
+	err = os.RemoveAll("./web/asset")
 	if err != nil {
 		log.Println("deleting the public folders due to logout failed", err)
 	}

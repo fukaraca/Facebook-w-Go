@@ -6,6 +6,7 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/jackc/pgtype"
 	"github.com/jackc/pgx/v4"
+	"html/template"
 	"time"
 )
 
@@ -84,22 +85,27 @@ type EuserCred struct {
 	Bio          pgtype.Varchar     `conn:"bio"`
 }
 
-type FriendWhoToBeAdded struct {
-	FriendID string `json:"friendid"`
-	Since    string `json:"since"`
-}
-
 type Relationship struct {
-	Username   string      `conn:"username"`
+	Username   string      `conn:"username" json:"username"`
 	Friendname string      `conn:"friendname" json:"friendID"`
 	Since      pgtype.Date `conn:"since" json:"since"`
 }
 
 type PostThatBeSaved struct {
-	Postername        string    `json:"postername"`
-	PostId            string    `json:"post_id"` //uuid typeı olabilir todo
-	PostTime          time.Time `json:"post_time"`
-	PostMessage       string    `json:"post_message"`
-	PostImageFilepath string    `json:"post_image_filepath"`
-	PostYtEmbedLink   string    `json:"post_yt_embed_link"`
+	Postername        string    `json:"postername" conn:"postername"`
+	PostId            string    `json:"post_id" conn:"post_id"`
+	PostTime          time.Time `json:"post_time" conn:"post_time"`
+	PostMessage       string    `json:"post_message" conn:"post_message"`
+	PostImageFilepath string    `json:"post_image_filepath" conn:"post_image_filepath"`
+	PostYtEmbedLink   string    `json:"post_yt_embed_link" conn:"post_yt_embed_link"`
 }
+
+type PostThatBeTemplated struct {
+	Postername        string        `json:"postername" conn:"postername"`
+	PostId            string        `json:"post_id" conn:"post_id"`
+	PostTime          time.Time     `json:"post_time" conn:"post_time"`
+	PostMessage       string        `json:"post_message" conn:"post_message"`
+	PostImageFilepath template.HTML `json:"post_image_filepath" conn:"post_image_filepath"`
+	PostYtEmbedLink   template.HTML `json:"post_yt_embed_link" conn:"post_yt_embed_link"`
+}
+type ToBeLoadedMore template.HTML

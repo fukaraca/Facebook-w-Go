@@ -6,7 +6,34 @@
   <link rel="stylesheet" type="text/css" href="css/bootstrap.min.css">
   <link rel="stylesheet" type="text/css" href="css/style.css">
   <style>
+     iframe {
+      width:90%;
+      height:90%;
+    }
 
+     .search input[type=text]{
+       width:300px;
+       height:25px;
+       border-radius:25px;
+       border: none;
+     }
+
+     .search{
+       float:left;
+       margin:7px;
+      padding-left: 100px;
+     }
+
+     .search button{
+       background-color: #3b5998;
+       color: black;
+       float: right;
+       padding: 10px 10px;
+       margin-right: 16px;
+       font-size: 12px;
+       border: none;
+       cursor: pointer;
+     }
   </style>
 </head>
 <body>
@@ -15,6 +42,18 @@
   <div class="container-fluid">
     <div class="navbar-header">
       <a class="navbar-brand" href="/home">FaceClone</a>
+    </div>
+    <div class="search">
+      <form action="#">
+        <input type="text"
+               placeholder=" Search Users"
+               name="search-box">
+        <button>
+          <i class="fa fa-search"
+             style="font-size: 18px;">
+          </i>
+        </button>
+      </form>
     </div>
     <ul class="nav navbar-nav navbar-right">
       <li><a onclick="darkMode()">Dark Mode</a></li>
@@ -34,7 +73,7 @@
       <div class="panel panel-default">
         <label></label>
         <div class="panel-body">
-          <h4>{{.profileId}}</h4>
+          <h4 id="profileaydi">{{.profileId}}</h4>
           <p>{{.statusMessage}}</p>
         </div>
       </div>
@@ -74,27 +113,36 @@
       <hr>
       <!-- ./post form -->
 
-
       <div>
+
         <!-- post -->
-        <div class="panel panel-default">
-          {{range .Posts}}
+        {{range .posts}}
+        <div class="panel panel-default" style="border-style:dot-dot-dash;border-width:thick;border-bottom-color:#618685">
           <div class="panel-body">
-
-            <p>{{.postMessage}}</p> <br>
-            {{.ytEmbedLink}}
-
+            {{.PostImageFilepath}}
+            <br>
+            <p>{{.PostMessage}}</p>
+            <br>
+            {{.PostYtEmbedLink}}
           </div>
           <div class="panel-footer">
-            <span>posted {{.postTime}} by {{.posterUsername}}</span>
-            <span class="pull-right"><a class="text-danger" href="/delpost/{{.postId}}">[delete]</a></span>
+            <span>posted at <b>{{.PostTime.Format "15:04:05 02/01/2006"}}</b> by <span class="postername">{{.Postername}}</span></span>
+            <span class="pull-right" id="disifneces"><a class="text-danger" href="/delpost/{{.PostId}}">[delete]</a></span>
           </div>
-          <hr>
-          {{end}}
         </div>
+        <hr>
+
+        {{end}}
         <!-- ./post -->
       </div>
 
+      <!--loadmore-->
+  <div id="loadmoredivid">
+  </div>
+      <div class="form-group">
+        <input class="btn btn-primary" id="loadmoreid" type="button" name="loadmore" value="Load more" onclick="loadMore('/loadmorehome/')" >
+      </div> <span id="loadstatusbybuttonid" style="display: none"> </span>
+      <!--loadmore-->
 
       <!-- ./feed -->
     </div>
@@ -143,6 +191,7 @@
 <script type="text/javascript" src="/js/bootstrap.min.js"></script>
 <script type="text/javascript" src="/js/script.js"></script>
 <script>
+  
 
 
 
