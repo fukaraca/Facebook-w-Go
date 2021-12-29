@@ -31,7 +31,9 @@ func Auth(fn gin.HandlerFunc) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		log.Println("Req ID:", requestid.Get(c))
 		if !CheckSession(c) {
+
 			c.HTML(http.StatusUnauthorized, "login.html", nil)
+			c.Abort()
 			return
 		}
 
@@ -53,7 +55,7 @@ func GetLogout(c *gin.Context) {
 
 //GetHome function is handler function for GET' ting home page
 func GetHome(c *gin.Context) {
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), TIMEOUT)
 	defer cancel()
 	username, err := c.Cookie("uid")
 	if err == http.ErrNoCookie {
@@ -267,6 +269,7 @@ func GetLoadMoreAtHome(c *gin.Context) {
 
 }
 
+//GetLoadMoreAtProfile function handles load more post feature for my profile page via XMLHTTPRequest
 func GetLoadMoreAtProfile(c *gin.Context) {
 
 	username, err := c.Cookie("uid")
@@ -294,7 +297,7 @@ func GetLoadMoreAtProfile(c *gin.Context) {
 
 }
 
-//GetLoadMoreByUsername
+//GetLoadMoreByUsername function handles load more post feature for other user profile page via XMLHTTPRequest
 func GetLoadMoreByUsername(c *gin.Context) {
 
 	_, err := c.Cookie("uid")
@@ -321,6 +324,25 @@ func GetLoadMoreByUsername(c *gin.Context) {
 		"LoadMorePost": loadMorePost,
 	})
 
+}
+
+//DelPostId function deletes the related post
+func DelPostId(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), TIMEOUT)
+	defer cancel()
+	username, err := c.Cookie("uid")
+	if err == http.ErrNoCookie {
+		log.Println("No cookie error: ", err)
+		return
+	}
+	postIdToBeDeleted := c.Param("postId")
+	err = DeleteThisPost(ctx, username, postIdToBeDeleted)
+	if err != nil {
+		log.Println("Post couldn't be deleted:", err)
+		return
+	}
+	c.String(http.StatusOK, "")
+	return
 }
 
 //PostIt function handles posting service

@@ -213,6 +213,18 @@ func UnfriendQuery(ctx context.Context, username, thatProfile string) error {
 	return nil
 }
 
+//DeleteThisPost deletes given post if username ise equal postername for related post
+func DeleteThisPost(ctx context.Context, username, postId string) error {
+	deletePostStr := fmt.Sprintf("DO $do$ BEGIN IF (SELECT EXISTS(SELECT 1 FROM posts WHERE post_id = '%s' AND postername = '%s')) THEN DELETE FROM posts where post_id='%s'; END IF;  END $do$", postId, username, postId)
+	_, err := conn.Exec(ctx, deletePostStr)
+	if err != nil {
+		log.Println("delete post from posts table failed", err)
+		return err
+	}
+	return nil
+
+}
+
 //BringMeSomeHisPosts function returns posts from certain username
 func BringMeSomeMyPosts(ctx context.Context, username string) ([]PostThatBeTemplated, error) {
 	bringMePostsStr := fmt.Sprintf("SELECT * FROM posts WHERE postername='%s' ORDER BY post_time DESC LIMIT 10;", username)
@@ -328,6 +340,13 @@ func LoadMoreWithOffset(ctx context.Context, username string, pageNum int) ([]To
 				tempPost.PostImageFilepath = fmt.Sprintf("<img src=\"%s\" class=\"media-object\" alt=\"Failed to load post image :(\" style=\"max-width: 95%%; max-height: 95%%;\">", tempImagePath)
 			}
 		}
+		tempDispStr := ""
+		if tempPost.Postername != username {
+			tempDispStr = fmt.Sprintf(`style="display: none"`)
+		} else {
+			tempDispStr = fmt.Sprintf(`style="display: inline"`)
+		}
+
 		tempLoadMore := ToBeLoadedMore(fmt.Sprintf(`
 <div class="panel panel-default" style="border-style:dot-dot-dash;border-width:thick;border-bottom-color:#618685">
           <div class="panel-body">
@@ -338,12 +357,13 @@ func LoadMoreWithOffset(ctx context.Context, username string, pageNum int) ([]To
             %s  
           </div>
           <div class="panel-footer">
-            <span>posted at <b>%s</b> by %s</span> 
-            <span class="pull-right"><a class="text-danger" href="/delpost/%s">[delete]</a></span>
+            <span>posted at <b>%s</b> by %s</span>
+            <span class="pull-right" %s ><a class="text-danger" href="javascript:void(0)" onclick="deletePost('/delpost/%s')">[delete]</a><a id="dummy-delete" style="display: none" href="" ></a></span>
           </div>
+
         </div>
         <hr>
-`, tempPost.PostImageFilepath, tempPost.PostMessage, tempPost.PostYtEmbedLink, tempPost.PostTime.Format("15:04:05 02/01/2006"), tempPost.Postername, tempPost.PostId))
+`, tempPost.PostImageFilepath, tempPost.PostMessage, tempPost.PostYtEmbedLink, tempPost.PostTime.Format("15:04:05 02/01/2006"), tempPost.Postername, tempDispStr, tempPost.PostId))
 
 		tempListToBeLoadedMore = append(tempListToBeLoadedMore, tempLoadMore)
 	}
@@ -386,10 +406,11 @@ func LoadMoreWithOffsetAllSameUsername(ctx context.Context, username string, pag
           </div>
           <div class="panel-footer">
             <span>posted at <b>%s</b> by %s</span>
+            <span class="pull-right"  ><a class="text-danger" href="javascript:void(0)" onclick="deletePost('/delpost/%s')">[delete]</a><a id="dummy-delete" style="display: none" href="" ></a></span>
           </div>
         </div>
         <hr>
-`, tempPost.PostImageFilepath, tempPost.PostMessage, tempPost.PostYtEmbedLink, tempPost.PostTime.Format("15:04:05 02/01/2006"), tempPost.Postername))
+`, tempPost.PostImageFilepath, tempPost.PostMessage, tempPost.PostYtEmbedLink, tempPost.PostTime.Format("15:04:05 02/01/2006"), tempPost.Postername, tempPost.PostId))
 
 		tempListToBeLoadedMore = append(tempListToBeLoadedMore, tempLoadMore)
 	}
@@ -425,7 +446,6 @@ func BringMeFriends(ctx context.Context, username string) ([]Relationship, error
 //FindMeSuggestibleFriendsAndAlsoOneOfMine brings 3 random friends who is not friend of the username from DB and also one of his friends for "missed me?" div
 func FindMeSuggestibleFriendsAndAlsoOneOfMine(ctx context.Context, username string) ([]string, string, error) {
 	suggestStr := fmt.Sprintf("SELECT username FROM user_creds AS uc WHERE uc.username NOT IN (SELECT friendname FROM relations WHERE username = '%s') AND uc.username <> '%s' ORDER BY random() LIMIT 3;", username, username)
-	// select * from posts where username in (select friendname from relations where username ='%s' union select '%s'::varchar(50);) ORDER BY post_time DESC LIMIT 10;
 	res, err := conn.Query(ctx, suggestStr)
 	if err != nil {
 		log.Println("query error1:", err)

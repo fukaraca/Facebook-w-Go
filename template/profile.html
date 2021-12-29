@@ -113,7 +113,7 @@
             </div>
             <div class="panel-footer">
               <span>posted at <b>{{.PostTime.Format "15:04:05 02/01/2006"}}</b> by {{.Postername}}</span>
-              <span class="pull-right"><a class="text-danger" href="/delpost/{{.PostId}}">[delete]</a></span>
+              <span class="pull-right"  ><a class="text-danger" href="javascript:void(0)" onclick="deletePost('/delpost/{{.PostId}}')">[delete]</a><a id="dummy-delete" style="display: none" href="" ></a></span>
             </div>
           </div>
           <hr>
