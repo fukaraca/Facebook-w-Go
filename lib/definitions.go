@@ -5,7 +5,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"
 	"github.com/jackc/pgtype"
-	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"html/template"
 	"time"
 )
@@ -14,7 +14,7 @@ import (
 var R *gin.Engine
 var cache *redis.Client
 var Ctx = context.Background()
-var conn *pgx.Conn
+var conn *pgxpool.Pool
 var err error
 
 var GetEnv = setEnv()

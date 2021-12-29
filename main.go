@@ -19,6 +19,7 @@ func main() {
 	lib.R.GET("/loadmorehome/:page", lib.Auth(lib.GetLoadMoreAtHome))
 	lib.R.GET("/loadmoreprofile/:page", lib.Auth(lib.GetLoadMoreAtProfile))
 	lib.R.GET("/loadmore/:profileID/:page", lib.Auth(lib.GetLoadMoreByUsername))
+	lib.R.GET("/delpost/:postId", lib.Auth(lib.DelPostId))
 
 	lib.R.POST("/postIt", lib.Auth(lib.PostIt))
 	lib.R.POST("/addunfriend", lib.Auth(lib.PostAddUnfriend))

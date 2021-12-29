@@ -75,9 +75,6 @@ function loadContents(){
             response.LoadMorePost.forEach(function (element){
                 document.getElementById('loadmoredivid').insertAdjacentHTML("beforeend", element);
             })
-
-
-
         } else {
             console.log('There was a problem with the request.');
         }
@@ -85,5 +82,20 @@ function loadContents(){
 }
 
 
+function deletePost(url){
+    ajaxDelPost = new XMLHttpRequest();
+    ajaxDelPost.onreadystatechange=function (){
+        if (ajaxDelPost.readyState === ajaxDelPost.DONE) {
+            if (ajaxDelPost.status === 200) {
+                document.getElementById("dummy-delete").click()
+            } else {
+                console.log('There was a problem with the request.');
+            }
+        }
+    }
+    ajaxDelPost.open("GET",url,true);
+    ajaxDelPost.send();
+    return true;
+}
 
 

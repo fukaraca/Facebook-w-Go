@@ -6,7 +6,8 @@ import (
 	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"
-	"github.com/jackc/pgx/v4"
+	//"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/spf13/viper"
 	"io"
 	"log"
@@ -61,7 +62,7 @@ func CreateRedisClient() {
 //ConnectDB function opens a connection to PSQL DB
 func ConnectDB() {
 	var databaseURL = fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", db_Host, db_Port, db_User, db_Password, db_Name)
-	conn, err = pgx.Connect(Ctx, databaseURL)
+	conn, err = pgxpool.Connect(Ctx, databaseURL)
 	if err != nil {
 		log.Println("DB connection error:", err)
 	}
