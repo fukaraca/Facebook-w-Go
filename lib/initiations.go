@@ -57,6 +57,8 @@ func CreateRedisClient() {
 	}
 	log.Println(pong, " redis activated")
 	cache = client
+	//enable notifications from redis
+	cache.ConfigSet(Ctx, "notify-keyspace-events", "KEA")
 }
 
 //ConnectDB function opens a connection to PSQL DB

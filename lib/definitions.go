@@ -91,6 +91,7 @@ type Relationship struct {
 	Since      pgtype.Date `conn:"since" json:"since"`
 }
 
+//PostThatBeSaved used in PostIt handler
 type PostThatBeSaved struct {
 	Postername        string    `json:"postername" conn:"postername"`
 	PostId            string    `json:"post_id" conn:"post_id"`
@@ -100,6 +101,7 @@ type PostThatBeSaved struct {
 	PostYtEmbedLink   string    `json:"post_yt_embed_link" conn:"post_yt_embed_link"`
 }
 
+//PostThatBeTemplated is used for loading from db as to be rendered
 type PostThatBeTemplated struct {
 	Postername        string        `json:"postername" conn:"postername"`
 	PostId            string        `json:"post_id" conn:"post_id"`
@@ -108,4 +110,9 @@ type PostThatBeTemplated struct {
 	PostImageFilepath template.HTML `json:"post_image_filepath" conn:"post_image_filepath"`
 	PostYtEmbedLink   template.HTML `json:"post_yt_embed_link" conn:"post_yt_embed_link"`
 }
+
 type ToBeLoadedMore template.HTML
+
+type SearchLetters struct {
+	Letters string `json:"searchLetters"`
+}

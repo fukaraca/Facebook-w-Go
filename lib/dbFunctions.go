@@ -255,6 +255,38 @@ func BringMeSomeMyPosts(ctx context.Context, username string) ([]PostThatBeTempl
 	return tempBroughtPosts, nil
 }
 
+func QueryChatHistoryIfExists() {
+
+}
+
+//BringMeSomeMessages brings related messages from DB as slice of byte array. keyCandidate priors fieldCandidate lexicographically.
+//This is the way to handle logging of chat as unique.
+func BringMeSomeMessages(ctx context.Context, keyCandidate, fieldCandidate string) ([][]byte, error) {
+	ctxn, cancel := context.WithTimeout(ctx, TIMEOUT)
+	defer cancel()
+	rows, err := conn.Query(ctxn, "SELECT message FROM messages WHERE key_candidate=$1 AND field_candidate=$2 ORDER BY message_id DESC LIMIT 40;", keyCandidate, fieldCandidate)
+	defer rows.Close()
+	if err != nil {
+		log.Println("bring me some messages query failed:", err)
+		return nil, err
+	}
+
+	someMsgBytes := [][]byte{}
+
+	for i := 0; rows.Next(); i++ {
+
+		tempMsgByte := []byte{}
+		err := rows.Scan(&tempMsgByte)
+		if err != nil {
+			log.Println("scan row bring me some of my messages failed:", err)
+			return nil, err
+		}
+		someMsgBytes = append(someMsgBytes, tempMsgByte)
+	}
+
+	return someMsgBytes, nil
+}
+
 //BringMeSomeHisPosts brings posts for user/profileID page
 func BringMeSomeHisPosts(ctx context.Context, username string) ([]PostThatBeTemplated, error) {
 	bringMePostsStr := fmt.Sprintf("SELECT * FROM posts WHERE postername='%s' ORDER BY post_time DESC LIMIT 10;", username)
@@ -415,6 +447,33 @@ func LoadMoreWithOffsetAllSameUsername(ctx context.Context, username string, pag
 		tempListToBeLoadedMore = append(tempListToBeLoadedMore, tempLoadMore)
 	}
 	return tempListToBeLoadedMore, nil
+}
+
+//FilterUsersByLetters function makes query for search by filtering with 'letters' parameter and returns a slice o 3 random match
+func FilterUsersByLetters(ctx context.Context, letters SearchLetters) ([]ToBeLoadedMore, error) {
+	queryFilterString := fmt.Sprintf("SELECT username,name,lastname from user_creds where (username || name) ~* '(%s)' order by random() limit 3;;", letters.Letters)
+	rows, err := conn.Query(ctx, queryFilterString)
+	defer rows.Close()
+	if err != nil {
+		log.Println("getFriends query failed", err)
+		return nil, err
+	}
+	filteredList := []ToBeLoadedMore{}
+	for i := 0; rows.Next(); i++ {
+		tempUsername := ""
+		tempFirstname := ""
+		tempLastname := ""
+		err = rows.Scan(&tempUsername, &tempFirstname, &tempLastname)
+		if err != nil {
+			log.Println("scan row filterusersbyletters failed:", err)
+			return nil, err
+		}
+		dropdownHtmlStr := ToBeLoadedMore(fmt.Sprintf(`<div class="dropdivider"></div>
+        <a class="dropcont" href="/user/%s">%s : %s %s</a>`, tempUsername, tempUsername, tempFirstname, tempLastname))
+		filteredList = append(filteredList, dropdownHtmlStr)
+
+	}
+	return filteredList, nil
 }
 
 //BringMeFriends return friends list as slice of struct

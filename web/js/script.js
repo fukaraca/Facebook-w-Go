@@ -1,3 +1,5 @@
+darkMode()
+
 function hideEditStatus() {
     var x = document.getElementsByClassName('hidyform');
     for (let i = 0; i < x.length; i++) {
@@ -23,15 +25,23 @@ function hideDelete() {
     }
 }
 
-
 function darkMode() {
-    let element = document.body;
-    element.classList.toggle("dark-mode");
+
+
+    document.body.classList.toggle("dark-mode");
+    panelbodies=document.getElementsByClassName('panel-body')
+    for (let i=0;i<panelbodies.length; i++) {
+        panelbodies.item(i).classList.toggle("dark-mode")
+    }
+    panelfooters=document.getElementsByClassName('panel-footer')
+    for (let i=0;i<panelfooters.length; i++) {
+        panelfooters.item(i).classList.toggle("dark-mode")
+    }
 }
+
 function uploadImage() {
     document.getElementById("postimage").click() ;
 }
-
 
 function addUnfriend(){
     httpRequest = new XMLHttpRequest();
@@ -47,8 +57,8 @@ function alertContents() {
     if (httpRequest.readyState === httpRequest.DONE) {
         if (httpRequest.status === 200) {
             let response = httpRequest.responseText;
-             addbut.value = (response==="true")?"Unfriend":"Add Friend";
-             addbut.style.backgroundColor=(response==="true")?"firebrick":"#337ab7";
+            addbut.value = (response==="true")?"Unfriend":"Add Friend";
+            addbut.style.backgroundColor=(response==="true")?"firebrick":"#337ab7";
         } else {
             console.log('There was a problem with the request.');
         }
@@ -64,23 +74,21 @@ function loadMore(url){
     ajaxLoadMore.responseType="json";
     ajaxLoadMore.open("GET",url,true);
     ajaxLoadMore.send()
-
 }
-
 function loadContents(){
     if (ajaxLoadMore.readyState === ajaxLoadMore.DONE) {
         if (ajaxLoadMore.status === 200) {
             let response = ajaxLoadMore.response; /* responseXML olabilr*/
-
+            darkMode()
             response.LoadMorePost.forEach(function (element){
                 document.getElementById('loadmoredivid').insertAdjacentHTML("beforeend", element);
             })
+            darkMode()
         } else {
             console.log('There was a problem with the request.');
         }
     }
 }
-
 
 function deletePost(url){
     ajaxDelPost = new XMLHttpRequest();
@@ -98,4 +106,39 @@ function deletePost(url){
     return true;
 }
 
+
+function searchUser(){
+
+    searchTextBox=document.getElementById('search-box-text');
+
+    if (searchTextBox.value.length>2){
+        searchTextAjax = new XMLHttpRequest();
+        searchTextAjax.responseType="json";
+        searchTextAjax.onreadystatechange = searchUserContent;
+        searchTextAjax.open("POST", "/searchuser",true);
+        searchTextAjax.setRequestHeader('Content-Type', 'application/json');
+        searchTextAjax.send(JSON.stringify({"searchLetters":searchTextBox.value}));
+    }
+    else{
+        document.getElementById('dropdowncontdivid').innerHTML = '';
+    }
+}
+function searchUserContent(){
+    if (searchTextAjax.readyState === searchTextAjax.DONE) {
+        if (searchTextAjax.status === 200) {
+            let response = searchTextAjax.response;
+
+            document.getElementById('dropdowncontdivid').innerHTML = ""
+            response.filtered.forEach(function (element){
+                document.getElementById('dropdowncontdivid').insertAdjacentHTML("beforeend", element);
+            })
+
+        } else {
+            console.log('There was a problem with the request.');
+        }
+    }
+}
+function searchUserDirectly(){
+    document.getElementById('seach-form-id').action = "/user/" + document.getElementById('search-box-text').value;
+}
 

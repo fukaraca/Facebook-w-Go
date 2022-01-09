@@ -5,10 +5,15 @@ import (
 	"smallSteeps/lib"
 )
 
-func main() {
-	//delete post delete yazısı vs
-	//routes
+func init() {
+	lib.InitServer()
+	lib.CreateRedisClient()
+	lib.ConnectDB()
+}
+
+func routes() {
 	lib.R.NoRoute(lib.NoRoute404)
+	lib.R.GET("/chat", lib.Auth(lib.WsChat))
 	lib.R.GET("/logout", lib.Auth(lib.GetLogout))
 	lib.R.GET("/login", lib.Auth(lib.GetHome))
 	lib.R.GET("/home", lib.Auth(lib.GetHome))
@@ -21,6 +26,7 @@ func main() {
 	lib.R.GET("/loadmore/:profileID/:page", lib.Auth(lib.GetLoadMoreByUsername))
 	lib.R.GET("/delpost/:postId", lib.Auth(lib.DelPostId))
 
+	lib.R.POST("/searchuser", lib.Auth(lib.PostSearchUser))
 	lib.R.POST("/postIt", lib.Auth(lib.PostIt))
 	lib.R.POST("/addunfriend", lib.Auth(lib.PostAddUnfriend))
 	lib.R.POST("/updateprofile", lib.Auth(lib.PostUpdateProfile))
@@ -29,15 +35,12 @@ func main() {
 	lib.R.POST("/checkAuthLog", lib.PostCheckAuth)
 	lib.R.POST("/checkReg", lib.PostCheckReg)
 	lib.R.POST("/deleteaccount", lib.Auth(lib.PostDeleteAccount))
-
-	log.Fatalln("Router encountered and error while main.Run:", lib.R.Run(lib.Server_Port))
-
 }
 
-func init() {
-	lib.InitServer()
-	lib.CreateRedisClient()
-	lib.ConnectDB()
+func main() {
+	routes()
+	log.Fatalln("Router encountered and error while main.Run:", lib.R.Run(lib.Server_Port))
+
 }
 
 //todo api ile postid,user posts fetch edilecek

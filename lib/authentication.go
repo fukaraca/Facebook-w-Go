@@ -14,7 +14,7 @@ import (
 
 //CheckCookie function checks validation of cookie. Return TRUE if it's valid
 func CheckCookie(c *gin.Context, toBeChecked, userId string) bool {
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Second)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), TIMEOUT)
 	defer cancel()
 	cookieVal, err := cache.Do(ctx, "GET", toBeChecked).Result()
 
