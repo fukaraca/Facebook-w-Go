@@ -10,6 +10,10 @@
       content:" *";
       color: red;
     }
+
+    .update-bio-class{
+      display: block;
+    }
   </style>
 </head>
 <body>
@@ -94,10 +98,21 @@
           <img src="{{.avatarPath}}" class="media-object" alt="Avatar couldn't be loaded" style="max-width: 150px; max-height: 150px;">
         </div>
         <div class="media-body"><!-- section at the right of avatar -->
-          <h2 class="media-heading">{{.userName}}</h2>
-          <p>{{.userStatus}}</p>
+          <span><b>Username:  </b>{{.username}}</span>
+          <p><b>Bio:  </b> {{.bio}}</p>
         </div>
       </div>
+
+
+      <hr>
+      <input type="button" value="Edit Bio" id="edit-bio-btn" class="btn btn-primary" onclick="toggleEditBio()">
+      <form method="post" class="update-bio-class" id="update-bio-id" action="/updateBio" enctype="multipart/form-data" style="display: none" >
+      <div class="form-group"  >
+        <textarea contenteditable="true" class="form-control" name="bioMessage" placeholder="How do you feel..."></textarea>
+        <input class="btn btn-primary" type="submit" name="updateBioBtn" value="Update Bio">
+
+      </div>
+      </form>
       <hr>
 
       <!-- change profile picture -->

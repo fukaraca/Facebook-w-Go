@@ -1,4 +1,4 @@
-darkMode()
+//darkMode()
 
 function hideEditStatus() {
     var x = document.getElementsByClassName('hidyform');
@@ -65,6 +65,18 @@ function alertContents() {
     }
 }
 
+function toggleEditBio(){
+    let editButton=document.getElementById('edit-bio-btn')
+    let formDiv=document.getElementById('update-bio-id')
+    if (formDiv.style.display==='none'){
+        formDiv.style.display='block'
+        editButton.value="Shrink"
+    }else {
+        formDiv.style.display='none'
+        editButton.value="Edit Bio"
+    }
+}
+
 let page = 1;
 function loadMore(url){
     ajaxLoadMore = new XMLHttpRequest();
@@ -79,11 +91,11 @@ function loadContents(){
     if (ajaxLoadMore.readyState === ajaxLoadMore.DONE) {
         if (ajaxLoadMore.status === 200) {
             let response = ajaxLoadMore.response; /* responseXML olabilr*/
-            darkMode()
+            //darkMode()
             response.LoadMorePost.forEach(function (element){
                 document.getElementById('loadmoredivid').insertAdjacentHTML("beforeend", element);
             })
-            darkMode()
+            //darkMode()
         } else {
             console.log('There was a problem with the request.');
         }
@@ -133,6 +145,7 @@ function searchUserContent(){
                 document.getElementById('dropdowncontdivid').insertAdjacentHTML("beforeend", element);
             })
 
+
         } else {
             console.log('There was a problem with the request.');
         }
@@ -141,4 +154,3 @@ function searchUserContent(){
 function searchUserDirectly(){
     document.getElementById('seach-form-id').action = "/user/" + document.getElementById('search-box-text').value;
 }
-

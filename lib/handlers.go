@@ -246,8 +246,11 @@ func GetEdit(c *gin.Context) {
 	if err != nil {
 		log.Println(err)
 	}
+
 	c.HTML(http.StatusOK, "settings.html", gin.H{
 		"firstname":     querriedProfile.name.String,
+		"username":      username,
+		"bio":           querriedProfile.bio.String,
 		"lastname":      querriedProfile.lastname.String,
 		"gender":        querriedProfile.gender.String,
 		"birthday":      querriedProfile.birthday.Time.Format("2006-01-02"),
@@ -567,6 +570,22 @@ func PostUpdateProfilePhoto(c *gin.Context) {
 	c.SetCookie("short_status_message", "Profile picture has been updated successfully!", 30, "/", "localhost", false, true)
 	c.Redirect(http.StatusFound, "/settings")
 
+}
+
+//PostUpdateBio func is for handling edit profile bio
+func PostUpdateBio(c *gin.Context) {
+	newBioMessage := *Striper(c.PostForm("bioMessage"))
+	username, err := c.Cookie("uid")
+	if err == http.ErrNoCookie {
+		log.Println("No cookie error: ", err)
+		return
+	}
+	err = UpdateMyBio(c.Request.Context(), newBioMessage, username)
+	if err != nil {
+		c.SetCookie("short_status_message", "bio couldn't be updated", 60, "/", Server_Host, false, true)
+	}
+	c.SetCookie("short_status_message", "bio updates succesfully...", 60, "/", Server_Host, false, true)
+	c.Redirect(303, "/settings")
 }
 
 //PostChangePassword is the function for changing login password.

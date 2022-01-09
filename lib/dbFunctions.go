@@ -88,9 +88,9 @@ func QueryUsername(ctx context.Context, str string) bool {
 func BringMeProfile(ctx context.Context, username string) (userCred, error) {
 	tempQurryed := userCred{}
 	tempBirthday := pgtype.Date{}
-	queryProfileString := fmt.Sprintf("SELECT name,lastname,mobilenumber,country,birthday,gender,avatarpath FROM user_creds WHERE username='%s';", username)
+	queryProfileString := fmt.Sprintf("SELECT name,lastname,mobilenumber,country,birthday,gender,avatarpath,bio FROM user_creds WHERE username='%s';", username)
 	bringy := conn.QueryRow(ctx, queryProfileString)
-	err = bringy.Scan(&tempQurryed.name, &tempQurryed.lastname, &tempQurryed.mobileNumber, &tempQurryed.country, &tempBirthday, &tempQurryed.gender, &tempQurryed.avatarPath)
+	err = bringy.Scan(&tempQurryed.name, &tempQurryed.lastname, &tempQurryed.mobileNumber, &tempQurryed.country, &tempBirthday, &tempQurryed.gender, &tempQurryed.avatarPath, &tempQurryed.bio)
 	if err != nil {
 		return userCred{}, fmt.Errorf("scanning the reloaded user infos from DB is failed:%s", err.Error())
 	}
@@ -255,10 +255,6 @@ func BringMeSomeMyPosts(ctx context.Context, username string) ([]PostThatBeTempl
 	return tempBroughtPosts, nil
 }
 
-func QueryChatHistoryIfExists() {
-
-}
-
 //BringMeSomeMessages brings related messages from DB as slice of byte array. keyCandidate priors fieldCandidate lexicographically.
 //This is the way to handle logging of chat as unique.
 func BringMeSomeMessages(ctx context.Context, keyCandidate, fieldCandidate string) ([][]byte, error) {
@@ -287,34 +283,18 @@ func BringMeSomeMessages(ctx context.Context, keyCandidate, fieldCandidate strin
 	return someMsgBytes, nil
 }
 
-//BringMeSomeHisPosts brings posts for user/profileID page
-func BringMeSomeHisPosts(ctx context.Context, username string) ([]PostThatBeTemplated, error) {
-	bringMePostsStr := fmt.Sprintf("SELECT * FROM posts WHERE postername='%s' ORDER BY post_time DESC LIMIT 10;", username)
-	rows, err := conn.Query(ctx, bringMePostsStr)
-	defer rows.Close()
+//UpdateMyBio updates bio for given bioString and username
+func UpdateMyBio(ctx context.Context, bioString, username string) error {
+	ctxT, cancel := context.WithTimeout(ctx, TIMEOUT)
+	updateString := fmt.Sprintf("UPDATE user_creds SET bio = '%s' WHERE username = '%s';", bioString, username)
+	_, err = conn.Exec(ctxT, updateString)
+	cancel()
 	if err != nil {
-		log.Println("get my posts query failed", err)
-		return nil, err
+		log.Println("update bio failed:", err)
+		return err
 	}
-	tempBroughtPosts := []PostThatBeTemplated{}
-	for i := 0; rows.Next(); i++ {
-		tempPost := PostThatBeTemplated{}
 
-		err = rows.Scan(&tempPost.PostId, &tempPost.Postername, &tempPost.PostMessage, &tempPost.PostTime, &tempPost.PostYtEmbedLink, &tempPost.PostImageFilepath)
-		if err != nil {
-			log.Println("scan row bring me some of my posts failed:", err)
-			return nil, err
-		}
-		if tempPost.PostImageFilepath != "" {
-			tempImagePath, err := BringMeImage(string(tempPost.PostImageFilepath), username)
-			if err == nil {
-				tempPost.PostImageFilepath = template.HTML(fmt.Sprintf("<img src=\"%s\" class=\"media-object\" alt=\"Failed to load post image :(\" style=\"max-width: 95%%; max-height: 95%%;\">", tempImagePath))
-
-			}
-		}
-		tempBroughtPosts = append(tempBroughtPosts, tempPost)
-	}
-	return tempBroughtPosts, nil
+	return nil
 }
 
 //BringMeSomePosts function returns posts from certain username and also from his friends
