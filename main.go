@@ -31,6 +31,7 @@ func routes() {
 	lib.R.POST("/addunfriend", lib.Auth(lib.PostAddUnfriend))
 	lib.R.POST("/updateprofile", lib.Auth(lib.PostUpdateProfile))
 	lib.R.POST("/updatepp", lib.Auth(lib.PostUpdateProfilePhoto))
+	lib.R.POST("/updateBio", lib.Auth(lib.PostUpdateBio))
 	lib.R.POST("/changepassword", lib.Auth(lib.PostChangePassword))
 	lib.R.POST("/checkAuthLog", lib.PostCheckAuth)
 	lib.R.POST("/checkReg", lib.PostCheckReg)

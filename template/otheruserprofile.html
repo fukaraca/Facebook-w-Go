@@ -85,7 +85,7 @@
                 </div>
                 <div class="media-body">
                     <h2 class="media-heading">{{.profilestruct.Name.String}} {{.profilestruct.Lastname.String}}</h2>
-                    <p>Bio: {{.profilestruct.Bio.String}}</p>
+                    <p id="bio-p">Bio: <span id="bio-span">{{.profilestruct.Bio.String}}</span></p>
                 </div>
             </div>
             <!-- user profile -->
@@ -93,7 +93,7 @@
             <hr>
 
             <!-- timeline -->
-            <div>
+            <div id="profile-posts-div">
                 <!-- post -->
                 {{range .posts}}
                 <div class="panel panel-default" style="border-style:dot-dot-dash;border-width:thick;border-bottom-color:#618685">
@@ -188,6 +188,9 @@
     if (document.getElementById('addfriendbut').value==="Unfriend") {
         document.getElementById('addfriendbut').style.backgroundColor="firebrick";
     }
+    if (document.getElementById('profile-posts-div').children.length<10){document.getElementById('loadmoreid').style.display='none'}
+    if (document.getElementById('bio-span').innerText===''){document.getElementById('bio-p').innerText=''}
+
 
 </script>
 </body>

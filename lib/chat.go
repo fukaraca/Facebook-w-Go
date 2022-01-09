@@ -126,7 +126,7 @@ func WsChat(c *gin.Context) {
 			fieldCandidate: fieldCandidate,
 		}
 
-		go reCollector(tempSessionInfo, int64(lenSomeMsgBytes))
+		go autoCollector(tempSessionInfo, int64(lenSomeMsgBytes))
 		m.Unlock()
 	} else {
 
@@ -145,7 +145,7 @@ func WsChat(c *gin.Context) {
 			log.Println("messages couldn't be get from redis", err)
 			return
 		}
-		for i := len(listMsgbyte) - 1; i >= 0; i-- {
+		for i := 0; i < len(listMsgbyte); i++ {
 			err = ws.WriteMessage(1, listMsgbyte[i])
 			if err != nil {
 				log.Println("writing initial messsages from DB failed:", err)
@@ -162,6 +162,7 @@ func WsChat(c *gin.Context) {
 	//blocks until done or endit signal
 	select {
 	case <-ctx.Done():
+
 		switch ctx.Err() {
 		case context.DeadlineExceeded:
 			log.Println("context timeout exceeded context done final")
@@ -211,7 +212,6 @@ func writer(ctx context.Context, ws *websocket.Conn, sessionIDstr string, done, 
 			cancel()
 			if err != nil {
 				log.Println("latest message couldn't be read from redis:", err)
-				return
 			}
 
 			err = ws.WriteMessage(1, latestMsg)
@@ -256,8 +256,8 @@ func controller(ws *websocket.Conn, ctx context.Context, sessionIDstr string, pu
 
 }
 
-//reCollector function saves messages in the redis to DB within certain intervals.
-func reCollector(info sessionInfo, lenInitialMsg int64) {
+//autoCollector function saves messages in the redis to DB within certain intervals.
+func autoCollector(info sessionInfo, lenInitialMsg int64) {
 	//recollection interval
 	time.Sleep(600 * time.Second)
 	//new context is used
@@ -286,5 +286,4 @@ func reCollector(info sessionInfo, lenInitialMsg int64) {
 			return
 		}
 	}
-
 }
