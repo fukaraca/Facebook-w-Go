@@ -1,10 +1,15 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>FaceClone - {{.profileID}}</title>
+    <title >FaceClone - {{.profileID}}</title>
 
     <link rel="stylesheet" type="text/css" href="/css/bootstrap.min.css">
     <link rel="stylesheet" type="text/css" href="/css/style.css">
+    <style>
+        #user_id {
+            display: none;
+        }
+    </style>
 </head>
 <body>
 <!-- nav -->
@@ -38,31 +43,32 @@
             <!-- edit profile -->
             <div class="panel panel-default">
                 <div class="panel-body">
-                    <h4><b>About </b>{{.profileID}}</h4>
+                    <h4><b>About </b> <span id="profile-id">{{.profileID}}</span> </h4>
+                    <span id="user-id">{{.username}}</span>
 
-                        <div class="panel-collapse">
-                            <label >Relationship: {{.profilestruct.Relationship.String}}</label>
-                        </div>
+                    <div class="panel-collapse">
+                        <label >Relationship: {{.profilestruct.Relationship.String}}</label>
+                    </div>
 
-                        <div class="panel-collapse">
-                            <label >School: {{.profilestruct.School.String}}</label>
-                        </div>
-
-
-                        <div class="panel-collapse">
-                            <label >Location: {{.profilestruct.Location.String}}</label>
-                        </div>
+                    <div class="panel-collapse">
+                        <label >School: {{.profilestruct.School.String}}</label>
+                    </div>
 
 
-                        <div class="panel-collapse">
-                            <label >Workplace: {{.profilestruct.Workplace.String}}</label>
-                        </div>
+                    <div class="panel-collapse">
+                        <label >Location: {{.profilestruct.Location.String}}</label>
+                    </div>
 
-                        <br>
 
-                        <div class="form-group">
-                            <input class="btn btn-primary" id="addfriendbut" type="button" name="addfriend" value="{{.addButtonValue}}" onclick="addUnfriend()">
-                        </div>
+                    <div class="panel-collapse">
+                        <label >Workplace: {{.profilestruct.Workplace.String}}</label>
+                    </div>
+
+                    <br>
+
+                    <div class="form-group">
+                        <input class="btn btn-primary" id="addfriendbut" type="button" name="addfriend" value="{{.addButtonValue}}" onclick="addUnfriend()">
+                    </div>
 
 
                 </div>
@@ -75,7 +81,7 @@
             <!-- user profile -->
             <div class="media">
                 <div class="media-left">
-                    <img src="{{.avatarPath}}" class="media-object" alt="Avatar couldn't be loaded" style="max-width: 150px; max-height: 150px;">
+                    <img src="{{.avatarPath}}" class="media-object" alt="Avatar couldn't be loaded" id="avatar-img" style="max-width: 150px; max-height: 150px;">
                 </div>
                 <div class="media-body">
                     <h2 class="media-heading">{{.profilestruct.Name.String}} {{.profilestruct.Lastname.String}}</h2>
@@ -134,9 +140,36 @@
                         </li>
                     </ul>
                     {{end}}
+
                 </div>
+                <span style="display: none" id="avatar-username">{{.avatarUsername}}</span>
             </div>
             <!-- ./friends -->
+
+            <!--chat-->
+            <div id="outer-chat-div" >
+                <div id="chat-div" style="display: none">
+                    <div id="messages-div">
+
+                        
+                    </div>
+                    <div id="chat-footer">
+                        <textarea id="chat-textarea"></textarea>
+                        <button id="chat-post-button" onclick="wsSendPost()" >Post</button>
+
+                    </div>
+                    <div style="background:#bbb;display: flex;">
+                        <span id="ws-status-p" ></span>
+                        <button id="ws-con-close" onclick="wsOnConnect()"  ></button>
+                    </div>
+                </div>
+                <div id="chat-open-div">
+                    <button id="chat-open-button" onclick="openChat()">Chat</button>
+                </div>
+            </div>
+
+            <!--chat-->
+
         </div>
     </div>
 </main>
@@ -149,12 +182,13 @@
     </ul>
 </footer>
 <!-- ./footer -->
-<script type="text/javascript" src="/js/bootstrap.min.js"></script>
 <script type="text/javascript" src="/js/script.js"></script>
+<script type="text/javascript" src="/js/websocket.js"></script>
 <script>
     if (document.getElementById('addfriendbut').value==="Unfriend") {
         document.getElementById('addfriendbut').style.backgroundColor="firebrick";
     }
+
 </script>
 </body>
 </html>

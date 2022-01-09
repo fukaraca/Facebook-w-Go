@@ -3,37 +3,11 @@
 <head>
   <title>FaceClone</title>
 
-  <link rel="stylesheet" type="text/css" href="css/bootstrap.min.css">
-  <link rel="stylesheet" type="text/css" href="css/style.css">
+  <link rel="stylesheet" type="text/css" href="/css/bootstrap.min.css">
+  <link rel="stylesheet" type="text/css" href="/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
   <style>
-     iframe {
-      width:90%;
-      height:90%;
-    }
 
-     .search input[type=text]{
-       width:300px;
-       height:25px;
-       border-radius:25px;
-       border: none;
-     }
-
-     .search{
-       float:left;
-       margin:7px;
-      padding-left: 100px;
-     }
-
-     .search button{
-       background-color: #3b5998;
-       color: black;
-       float: right;
-       padding: 10px 10px;
-       margin-right: 16px;
-       font-size: 12px;
-       border: none;
-       cursor: pointer;
-     }
   </style>
 </head>
 <body>
@@ -44,11 +18,16 @@
       <a class="navbar-brand" href="/home">FaceClone</a>
     </div>
     <div class="search">
-      <form action="#">
+      <form id="seach-form-id" onsubmit="searchUserDirectly()" method="get">
         <input type="text"
+               autocomplete="off"
+               id="search-box-text"
                placeholder=" Search Users"
-               name="search-box">
-        <button>
+               name="search-box" onkeyup="searchUser()">
+        <div class="dropdowncontdiv" id="dropdowncontdivid">
+        </div>
+
+        <button type="submit">
           <i class="fa fa-search"
              style="font-size: 18px;">
           </i>
@@ -139,8 +118,8 @@
       </div>
 
       <!--loadmore-->
-  <div id="loadmoredivid">
-  </div>
+      <div id="loadmoredivid">
+      </div>
       <div class="form-group">
         <input class="btn btn-primary" id="loadmoreid" type="button" name="loadmore" value="Load more" onclick="loadMore('/loadmorehome/')" >
       </div> <span id="loadstatusbybuttonid" style="display: none"> </span>
@@ -178,6 +157,9 @@
         </div>
       </div>
       <!-- ./friends -->
+
+
+
     </div>
   </div>
 </main>
@@ -190,11 +172,6 @@
   </ul>
 </footer>
 <!-- ./footer -->
-<script type="text/javascript" src="/js/bootstrap.min.js"></script>
 <script type="text/javascript" src="/js/script.js"></script>
-<script>
-
-
-</script>
 </body>
 </html>

@@ -162,12 +162,27 @@ func GetProfileByID(c *gin.Context) {
 	if err != nil {
 		log.Println(err)
 	}
+	//bringmeavatar for requested profileId
 	relPath, err := BringMeAvatar(querriedProfile.AvatarPath.String, profileID)
 	if err != nil {
 		log.Println(err)
 	}
 	relPath, _ = filepath.Rel("./user", relPath)
 	relPath = filepath.ToSlash(relPath)
+
+	relPathUsername := ""
+	//brinmeavatar for username
+	row := conn.QueryRow(ctx, "SELECT avatarpath FROM user_creds WHERE username=$1;", username)
+	err = row.Scan(&relPathUsername)
+	if err != nil {
+		log.Println("avatarpath for username couldn't be get for getrequestbyid", err)
+	}
+	relPathUsername, err = BringMeAvatar(relPathUsername, username)
+	if err != nil {
+		log.Println(err)
+	}
+	relPathUsername, _ = filepath.Rel("./user", relPathUsername)
+	relPathUsername = filepath.ToSlash(relPathUsername)
 
 	hisLatestPosts, err := BringMeSomeMyPosts(ctx, profileID)
 
@@ -177,10 +192,12 @@ func GetProfileByID(c *gin.Context) {
 	c.HTML(http.StatusOK, "otheruserprofile.html", gin.H{
 		"profileID":      profileID,
 		"avatarPath":     relPath,
+		"avatarUsername": relPathUsername,
 		"profilestruct":  querriedProfile,
 		"addButtonValue": addButValue,
 		"friends":        querriedFriendList,
 		"posts":          hisLatestPosts,
+		"username":       username,
 	})
 
 }
@@ -343,6 +360,26 @@ func DelPostId(c *gin.Context) {
 	}
 	c.String(http.StatusOK, "")
 	return
+}
+
+//PostSearchUser is handler for user search requests
+func PostSearchUser(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), TIMEOUT)
+	defer cancel()
+	lettersToBeSearched := SearchLetters{}
+	err = c.Bind(&lettersToBeSearched)
+	if err != nil && err != io.EOF {
+		log.Println("binding json failed post seach user:", err)
+		return
+	}
+	filteredQuery, err := FilterUsersByLetters(ctx, lettersToBeSearched)
+	if err != nil {
+		log.Println("filtering failed:")
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"filtered": filteredQuery,
+	})
 }
 
 //PostIt function handles posting service
