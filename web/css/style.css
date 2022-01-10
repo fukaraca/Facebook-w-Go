@@ -244,3 +244,95 @@ a {
   height: 3rem;
   width: 3rem;
 }
+
+
+
+
+
+
+.slide-image {
+  vertical-align: middle;
+  max-width:100%;
+  max-height: 300px;
+  object-fit: scale-down;
+
+}
+
+/* Position the image container (needed to position the left and right arrows) */
+.container-gallery {
+  position: relative;
+}
+
+/* Hide the images by default */
+.mySlides {
+  display: none;
+
+}
+
+/* Add a pointer when hovering over the thumbnail images */
+.cursor-gallery {
+  cursor: pointer;
+
+}
+
+/* Next & previous buttons */
+.prev-img,
+.next-img {
+  cursor: pointer;
+  position: absolute;
+  top: 40%;
+  width: auto;
+  padding: 15px;
+  margin-top: -50px;
+  color: black;
+  font-weight: bold;
+  font-size: 20px;
+  border-radius: 0 3px 3px 0;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Position the "next button" to the right */
+.next-img {
+  right: 0;
+  border-radius: 3px 0 0 3px;
+}
+
+/* On hover, add a black background color with a little bit see-through */
+.prev-img:hover,
+.next-img:hover {
+  background-color: rgba(0, 0, 0, 0.8);
+}
+
+
+.row-gallery:after {
+  content: "";
+  display: table;
+  clear: both;
+
+}
+
+/* Six columns side by side */
+.column-gallery {
+  float: left;
+  max-width: 10%;
+  height: 100px;
+  padding: 2px;
+
+
+}
+
+
+/* Add a transparency effect for thumbnail images */
+.thumb {
+  opacity: 0.6;
+}
+
+.active,
+.thumb:hover {
+  opacity: 1;
+}
+.col-md-12{
+  background-color: #999999;
+  margin-bottom: 10px;
+}

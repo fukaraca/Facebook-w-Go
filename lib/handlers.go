@@ -114,17 +114,18 @@ func GetProfile(c *gin.Context) {
 	relPath = filepath.ToSlash(relPath)
 
 	myLatestPosts, err := BringMeSomeMyPosts(ctx, username)
-
 	if err != nil {
 		log.Println("loading of my latest posts was failed", err)
 	}
 
+	gallery := BringHisGallery(username, 10)
 	c.HTML(http.StatusOK, "profile.html", gin.H{
 		"profileID":     username,
 		"avatarPath":    relPath,
 		"profilestruct": querriedProfile,
 		"friends":       querriedFriendList,
 		"posts":         myLatestPosts,
+		"gallery":       gallery,
 	})
 
 }
@@ -189,6 +190,14 @@ func GetProfileByID(c *gin.Context) {
 	if err != nil {
 		log.Println("loading of my latest posts was failed", err)
 	}
+	gallery := []string{}
+	tempGallery := BringHisGallery(profileID, 10)
+	for _, oneImagePath := range tempGallery {
+		oneImagePath, _ = filepath.Rel("./user", oneImagePath)
+		oneImagePath = filepath.ToSlash(oneImagePath)
+		gallery = append(gallery, oneImagePath)
+	}
+
 	c.HTML(http.StatusOK, "otheruserprofile.html", gin.H{
 		"profileID":      profileID,
 		"avatarPath":     relPath,
@@ -198,6 +207,7 @@ func GetProfileByID(c *gin.Context) {
 		"friends":        querriedFriendList,
 		"posts":          hisLatestPosts,
 		"username":       username,
+		"gallery":        gallery,
 	})
 
 }

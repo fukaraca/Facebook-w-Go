@@ -1,10 +1,16 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
   <title>FaceClone {{.profileID}}</title>
 
   <link rel="stylesheet" type="text/css" href="/css/bootstrap.min.css">
   <link rel="stylesheet" type="text/css" href="/css/style.css">
+  <style>
+
+
+  </style>
 </head>
 <body>
   <!-- nav -->
@@ -27,8 +33,29 @@
 
     <!-- buraya fotoğraflar gelecek-->
     <div class="row">
-      <div class="col-md-9">
-        <p>fotoğraf alanı</p>
+      <div class="col-md-12" id="col-md-12-id">
+        <h4 style="text-align:center">{{.profileID}}'s Gallery</h4>
+
+        <div class="container-gallery">
+        {{range .gallery}}
+          <div class="mySlides">
+            <img class="slide-image" src="{{.}}" style="width:100%">
+          </div>
+        {{end}}
+          <a class="prev-img" onclick="plusSlides(-1)">❮</a>
+          <a class="next-img" onclick="plusSlides(1)">❯</a>
+
+
+          <div class="row-gallery" id="profile-row-id">
+            {{range .gallery}}
+            <div class="column-gallery">
+              <img class="thumb cursor-gallery" src="{{.}}" style="max-width:100%;height: 100px" onclick="currentSlide(1)" alt="gallery-item">
+            </div>
+            {{end}}
+          </div>
+        </div>
+
+
       </div>
     </div>
     <!-- buraya fotoğraflar gelecek-->
@@ -169,6 +196,38 @@
 <script>
   if (document.getElementById('profile-posts-div').children.length<10){document.getElementById('loadmoreid').style.display='none'}
   if (document.getElementById('bio-span').innerText===''){document.getElementById('bio-p').value=''}
+  if (document.getElementById('profile-row-id').children.length===0){document.getElementById('col-md-12-id').style.display='none'}
+
+
+  let slideIndex = 1;
+  showSlides(slideIndex);
+
+  function plusSlides(n) {
+    showSlides(slideIndex += n);
+  }
+
+  function currentSlide(n) {
+    showSlides(slideIndex = n);
+  }
+
+  function showSlides(n) {
+    let i;
+    let slides = document.getElementsByClassName("mySlides");
+    let dots = document.getElementsByClassName("thumb");
+    //var captionText = document.getElementById("caption");
+    if (n > slides.length) {slideIndex = 1}
+    if (n < 1) {slideIndex = slides.length}
+    for (i = 0; i < slides.length; i++) {
+      slides[i].style.display = "none";
+    }
+    for (i = 0; i < dots.length; i++) {
+      dots[i].className = dots[i].className.replace(" active", "");
+    }
+    slides[slideIndex-1].style.display = "block";
+    dots[slideIndex-1].className += " active";
+    //captionText.innerHTML = dots[slideIndex-1].alt;
+  }
+
 </script>
 </body>
 </html>

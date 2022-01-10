@@ -142,6 +142,40 @@ func BringMeAvatar(privateavtPath, username string) (string, error) {
 	return relPath, nil
 }
 
+//BringMeImage function brings gallery from private filesystem with n number of item
+func BringHisGallery(username string, n int) []string {
+	gallery := []string{}
+	//is gallery copied into public directory readily
+	/*publicGalleryPath := fmt.Sprintf("./web/asset/postImages/%s", username)
+	if _, err := os.Stat(publicGalleryPath); !os.IsNotExist(err) {
+		if gallery, err = ListFilesInDir(publicGalleryPath, n); err != nil {
+			return nil
+		}
+		return gallery
+	}*/
+	privateGalleryPath := fmt.Sprintf("./private/assets/postImages/%s", username)
+	if _, err := os.Stat(privateGalleryPath); os.IsNotExist(err) {
+		log.Printf("there is no image that %s uploaded: %s\n", username, err.Error())
+		return nil
+	}
+	privateGallery, err := ListFilesInDir(privateGalleryPath, n)
+	if err != nil {
+		log.Println("gallery list couldn't be fetched from private folder", err)
+		return nil
+	}
+	for _, image := range privateGallery {
+		tempPrivatePathStr := fmt.Sprintf("./private/assets/postImages/%s/%s", username, image)
+		tempPublicImgPath, err := BringMeImage(tempPrivatePathStr, username)
+		if err != nil {
+			log.Println("image couldn't be migrated from private to public", err)
+			return nil
+		}
+		gallery = append(gallery, tempPublicImgPath)
+	}
+
+	return gallery
+}
+
 //BringMeImage function brings images from private filesystem
 func BringMeImage(privateImgPath, username string) (string, error) {
 
@@ -156,33 +190,31 @@ func BringMeImage(privateImgPath, username string) (string, error) {
 	}
 	// file does *not* exist
 	postImage, err := os.OpenFile(privateImgPath, os.O_RDONLY, 0444)
-	if err != nil { //todo default?
+	if err != nil {
 		return "", fmt.Errorf("private image file couldn't be opened:%s", err.Error())
 	}
 	defer postImage.Close()
 
 	//filePathString := fmt.Sprintf("./web/asset/avatars/%s/", username)
 	err = os.MkdirAll(publicImageDirPath, 0666)
-	if err != nil { //todo defaule?
-		return defaultAvatar, fmt.Errorf("public image dir couldn't be created:%s", err.Error())
+	if err != nil {
+		return "", fmt.Errorf("public image dir couldn't be created:%s", err.Error())
 	}
 
 	tempImage, err := os.Create(publicImagePath) //0 boyutlu file oluşturuluyor
-	if err != nil {                              //todo
-		return defaultAvatar, fmt.Errorf("public avatar zero-file couldn't be created:%s", err.Error())
+	if err != nil {
+		return "", fmt.Errorf("public avatar zero-file couldn't be created:%s", err.Error())
 	}
 	defer tempImage.Close()
 
 	_, err = io.Copy(tempImage, postImage) //0 boyutlu dosyaya kopyalanır
-	if err != nil {                        //todo
-		return defaultAvatar, fmt.Errorf("avatar file couldn't be copied:%s", err.Error())
+	if err != nil {
+		return "", fmt.Errorf("image file couldn't be copied:%s", err.Error())
 	}
 
-	//get relative path for avatar
+	//get relative path for image
 	relPath, _ := filepath.Rel("./web", publicImagePath)
 	relPath = filepath.ToSlash(relPath)
-	fmt.Println(err)
-
 	return relPath, nil
 }
 

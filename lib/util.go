@@ -10,6 +10,7 @@ import (
 	"log"
 	"mime/multipart"
 	"net/http"
+	"os"
 	"regexp"
 	"strings"
 )
@@ -103,4 +104,23 @@ func GetYtEmbed(shortlink string) (string, bool) {
 		return "Video can't be loaded", false
 	}
 	return jsonVideo.Html, true
+}
+
+//ListFilesInDir return a slice of n number content/file from given directory root
+func ListFilesInDir(root string, n int) ([]string, error) {
+	var files []string
+	f, err := os.Open(root)
+	if err != nil {
+		return files, err
+	}
+	fileInfo, err := f.Readdir(n)
+	f.Close()
+	if err != nil {
+		return files, err
+	}
+
+	for _, file := range fileInfo {
+		files = append(files, file.Name())
+	}
+	return files, nil
 }
