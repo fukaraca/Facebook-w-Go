@@ -37,8 +37,6 @@ func Auth(fn gin.HandlerFunc) gin.HandlerFunc {
 			return
 		}
 
-		//c.Writer.Header().Set("X-Custom-Header", "value")
-
 		fn(c)
 	}
 }
@@ -63,7 +61,7 @@ func GetHome(c *gin.Context) {
 		return
 	}
 	statusMessage, _ := c.Cookie("short_status_message")
-	c.SetCookie("short_status_message", "", -1, "/", "localhost", false, true)
+	c.SetCookie("short_status_message", "", -1, "/", Server_Host, false, true)
 
 	//suggest me 3 random user as friend and also bring one of my friends
 	toBeSuggested, randomFriend, err := FindMeSuggestibleFriendsAndAlsoOneOfMine(ctx, username)
@@ -90,7 +88,7 @@ func GetHome(c *gin.Context) {
 
 //GetProfile is the function for clients profile page
 func GetProfile(c *gin.Context) {
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), TIMEOUT)
 	defer cancel()
 	username, err := c.Cookie("uid")
 	if err == http.ErrNoCookie {
@@ -106,12 +104,15 @@ func GetProfile(c *gin.Context) {
 	if err != nil {
 		log.Println(err)
 	}
-	relPath, err := BringMeAvatar(querriedProfile.AvatarPath.String, username)
-	if err != nil {
-		log.Println(err)
+	relPath := defaultAvatar
+	if querriedProfile.AvatarPath.String != "" {
+		relPath, err = BringMeAvatar(querriedProfile.AvatarPath.String, username)
+		if err != nil {
+			log.Println(err)
+		}
+		relPath, _ = filepath.Rel("./user", relPath)
+		relPath = filepath.ToSlash(relPath)
 	}
-	relPath, _ = filepath.Rel("./user", relPath)
-	relPath = filepath.ToSlash(relPath)
 
 	myLatestPosts, err := BringMeSomeMyPosts(ctx, username)
 	if err != nil {
@@ -143,8 +144,7 @@ func GetProfileByID(c *gin.Context) {
 	}
 	ctx, cancel := context.WithTimeout(c.Request.Context(), TIMEOUT)
 	defer cancel()
-	queryStr := fmt.Sprintf("SELECT EXISTS(SELECT 1 FROM user_creds WHERE username='%s');", profileID)
-	ok := QueryUsername(ctx, queryStr)
+	ok := QueryUsername(ctx, profileID)
 	if !ok {
 		log.Println("ProfileID couldn't be found in DB")
 		c.Redirect(http.StatusFound, "/userNotFound")
@@ -172,18 +172,19 @@ func GetProfileByID(c *gin.Context) {
 	relPath = filepath.ToSlash(relPath)
 
 	relPathUsername := ""
-	//brinmeavatar for username
+	//bring me usernames avatar for chat thumbnail
 	row := conn.QueryRow(ctx, "SELECT avatarpath FROM user_creds WHERE username=$1;", username)
-	err = row.Scan(&relPathUsername)
-	if err != nil {
-		log.Println("avatarpath for username couldn't be get for getrequestbyid", err)
+	_ = row.Scan(&relPathUsername)
+	if relPathUsername == "" {
+		relPathUsername = defaultAvatar
+	} else {
+		relPathUsername, err = BringMeAvatar(relPathUsername, username)
+		if err != nil {
+			log.Println("bring me avatar failed in getprofilebyid:", err)
+		}
+		relPathUsername, _ = filepath.Rel("./user", relPathUsername)
+		relPathUsername = filepath.ToSlash(relPathUsername)
 	}
-	relPathUsername, err = BringMeAvatar(relPathUsername, username)
-	if err != nil {
-		log.Println(err)
-	}
-	relPathUsername, _ = filepath.Rel("./user", relPathUsername)
-	relPathUsername = filepath.ToSlash(relPathUsername)
 
 	hisLatestPosts, err := BringMeSomeMyPosts(ctx, profileID)
 
@@ -201,7 +202,7 @@ func GetProfileByID(c *gin.Context) {
 	c.HTML(http.StatusOK, "otheruserprofile.html", gin.H{
 		"profileID":      profileID,
 		"avatarPath":     relPath,
-		"avatarUsername": relPathUsername,
+		"avatarUsername": relPathUsername, //for chat thumbnail
 		"profilestruct":  querriedProfile,
 		"addButtonValue": addButValue,
 		"friends":        querriedFriendList,
@@ -271,6 +272,7 @@ func GetEdit(c *gin.Context) {
 	})
 }
 
+//GetLoadMoreAtHome is loadmore button handler at homepage
 func GetLoadMoreAtHome(c *gin.Context) {
 
 	username, err := c.Cookie("uid")
@@ -450,8 +452,7 @@ func PostIt(c *gin.Context) {
 
 		defer imgToBeUploaded.Close()
 	}
-	addPostString := fmt.Sprintf("INSERT INTO posts (post_id, postername, post_message, post_time, post_yt_embed_link, post_image_filepath) VALUES ('%s','%s','%s','%s','%s','%s');", post.PostId, post.Postername, post.PostMessage, post.PostTime.Format(time.RFC3339), post.PostYtEmbedLink, post.PostImageFilepath)
-	if _, err = conn.Exec(ctx, addPostString); err != nil {
+	if _, err = conn.Exec(ctx, "INSERT INTO posts (post_id, postername, post_message, post_time, post_yt_embed_link, post_image_filepath) VALUES ($1,$2,$3,$4,$5,$6);", post.PostId, post.Postername, post.PostMessage, post.PostTime.Format(time.RFC3339), post.PostYtEmbedLink, post.PostImageFilepath); err != nil {
 		log.Println("add post to DB was failed:", err)
 		return
 	}
@@ -484,8 +485,13 @@ func PostAddUnfriend(c *gin.Context) {
 		friend.Since.Time = time.Now()
 		friend.Username = username
 
-		addFriendString := fmt.Sprintf("INSERT INTO relations (username,friendname,since) VALUES ('%s','%s','%s');\nINSERT INTO relations (username,friendname,since) VALUES ('%s','%s','%s');", friend.Username, friend.Friendname, friend.Since.Time.Format("2006-01-02"), friend.Friendname, friend.Username, friend.Since.Time.Format("2006-01-02")) //jsonb array için {}kullanıyor. JSONB İÇİN []  COALESCE
-		_, err = conn.Exec(ctx, addFriendString)
+		_, err = conn.Exec(ctx, "INSERT INTO relations (username,friendname,since) VALUES ($1,$2,$3);", friend.Username, friend.Friendname, friend.Since.Time.Format("2006-01-02")) //jsonb array için {}kullanıyor. JSONB İÇİN []  COALESCE
+		if err != nil {
+			log.Println("update friends list was failed1:", err)
+			return
+		}
+		// ;
+		_, err = conn.Exec(ctx, "INSERT INTO relations (username,friendname,since) VALUES ($1,$2,$3)", friend.Friendname, friend.Username, friend.Since.Time.Format("2006-01-02")) //jsonb array için {}kullanıyor. JSONB İÇİN []  COALESCE
 		if err != nil {
 			log.Println("update friends list was failed1:", err)
 			return
@@ -518,11 +524,10 @@ func PostUpdateProfile(c *gin.Context) {
 		log.Println("No cookie error: ", err)
 		return
 	}
-	updateQueryString := fmt.Sprintf("UPDATE user_creds SET name = '%s',lastname = '%s',gender = '%s',birthday = '%s',mobilenumber = '%s',country = '%s' WHERE username = '%s';", upFirstname, upLastname, upGender, upBirthday, upMobile, upCountry, username)
 
 	ctx, cancel := context.WithTimeout(c.Request.Context(), TIMEOUT)
 	defer cancel()
-	_, err = conn.Exec(ctx, updateQueryString)
+	_, err = conn.Exec(ctx, "UPDATE user_creds SET name = $1,lastname = $2,gender = $3,birthday = $4,mobilenumber = $5,country = $6 WHERE username = $7;", upFirstname, upLastname, upGender, upBirthday, upMobile, upCountry, username)
 	if err != nil {
 		log.Println("user profile update has failed:", err)
 		return
@@ -530,7 +535,7 @@ func PostUpdateProfile(c *gin.Context) {
 	shortStatusMessage := "Updated successfully!"
 	c.SetCookie("short_status_message", shortStatusMessage, 60, "/", "localhost", false, true)
 
-	c.Redirect(303, "/settings")
+	c.Redirect(http.StatusFound, "/settings")
 
 }
 
@@ -570,8 +575,7 @@ func PostUpdateProfilePhoto(c *gin.Context) {
 
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
-	insertyString := fmt.Sprintf("UPDATE user_creds SET avatarpath = '%s' WHERE username= '%s';", filePathString+filename, username)
-	_, err = conn.Exec(ctx, insertyString)
+	_, err = conn.Exec(ctx, "UPDATE user_creds SET avatarpath = $1 WHERE username= $2;", filePathString+filename, username)
 	if err != nil {
 		log.Println("avatarpath update to DB was failed:", err)
 		c.SetCookie("short_status_message", "avatar path couldn't be saved:"+err.Error(), 60, "/", "localhost", false, true)
@@ -595,7 +599,7 @@ func PostUpdateBio(c *gin.Context) {
 		c.SetCookie("short_status_message", "bio couldn't be updated", 60, "/", Server_Host, false, true)
 	}
 	c.SetCookie("short_status_message", "bio updates succesfully...", 60, "/", Server_Host, false, true)
-	c.Redirect(303, "/settings")
+	c.Redirect(http.StatusFound, "/settings")
 }
 
 //PostChangePassword is the function for changing login password.
@@ -611,8 +615,8 @@ func PostChangePassword(c *gin.Context) {
 		}
 	}
 
-	checkLoginQuery := fmt.Sprintf("SELECT password FROM user_creds WHERE username LIKE '%s' ;", username)
-	hashedToBeChecked, err := QueryLog(c, checkLoginQuery)
+	//checkLoginQuery := fmt.Sprintf("SELECT password FROM user_creds WHERE username LIKE '%s' ;", username)
+	hashedToBeChecked, err := QueryLog(c, username)
 	if err != nil {
 		c.SetCookie("short_status_message", "Something went wrong with DB/Query:!"+err.Error(), 30, "/", "localhost", false, true)
 		c.Redirect(http.StatusFound, "/settings")
@@ -632,12 +636,12 @@ func PostChangePassword(c *gin.Context) {
 		return
 	}
 
-	updatePassword := fmt.Sprintf("UPDATE user_creds SET password = '%s' WHERE username = '%s';", newHashed, username)
+	//updatePassword := fmt.Sprintf("UPDATE user_creds SET password = '%s' WHERE username = '%s';", newHashed, username)
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
-	_, err = conn.Exec(ctx, updatePassword)
+	_, err = conn.Exec(ctx, "UPDATE user_creds SET password = $1 WHERE username = $2 ;", newHashed, username)
 	if err != nil {
-		c.SetCookie("short_status_message", "Password change failed!"+err.Error(), 30, "/", "localhost", false, true)
+		c.SetCookie("short_status_message", "Password change failed!"+err.Error(), 30, "/", Server_Host, false, true)
 		c.Redirect(http.StatusFound, "/settings")
 		return
 	}
@@ -660,36 +664,34 @@ func PostDeleteAccount(c *gin.Context) {
 	username, err := c.Cookie("uid")
 	if err != nil {
 		if err == http.ErrNoCookie {
-			c.SetCookie("short_status_message", "Delete failed:"+err.Error(), 30, "/", "localhost", false, true)
+			c.SetCookie("short_status_message", "Delete failed:"+err.Error(), 30, "/", Server_Host, false, true)
 			c.Redirect(http.StatusFound, "/settings")
 			return
 		}
 	}
 
-	checkPassQuery := fmt.Sprintf("SELECT password FROM user_creds WHERE username LIKE '%s' ;", username)
-	hashedToBeChecked, err := QueryLog(c, checkPassQuery)
+	hashedToBeChecked, err := QueryLog(c, username)
 	if err != nil {
-		c.SetCookie("short_status_message", "Something went wrong with DB/Query(pd):!"+err.Error(), 30, "/", "localhost", false, true)
+		c.SetCookie("short_status_message", "Something went wrong with DB/Query(pd):!"+err.Error(), 30, "/", Server_Host, false, true)
 		c.Redirect(http.StatusFound, "/settings")
 		return
 	}
 	if !CheckPasswordHash(confPass, hashedToBeChecked) {
-		c.SetCookie("short_status_message", "Password is incorrect!", 30, "/", "localhost", false, true)
+		c.SetCookie("short_status_message", "Password is incorrect!", 30, "/", Server_Host, false, true)
 		c.Redirect(http.StatusFound, "/settings")
 		return
 	}
-	deleteAccQuery := fmt.Sprintf("DELETE FROM user_creds WHERE username = '%s' ;", username)
-	_, err = conn.Exec(ctx, deleteAccQuery)
+
+	_, err = conn.Exec(ctx, "DELETE FROM user_creds WHERE username = $1 ;", username)
 	if err != nil {
-		c.SetCookie("short_status_message", "Delete failed!"+err.Error(), 30, "/", "localhost", false, true)
+		c.SetCookie("short_status_message", "Delete failed!"+err.Error(), 30, "/", Server_Host, false, true)
 		c.Redirect(http.StatusFound, "/settings")
 		return
 	}
 	//delete from relations table
-	deleteRelQuery := fmt.Sprintf("DELETE FROM relations WHERE username = '%s' or friendname = '%s' ;", username, username)
-	_, err = conn.Exec(ctx, deleteRelQuery)
+	_, err = conn.Exec(ctx, "DELETE FROM relations WHERE username = $1 or friendname = $2 ;", username, username)
 	if err != nil {
-		c.SetCookie("short_status_message", "Delete failed!"+err.Error(), 30, "/", "localhost", false, true)
+		c.SetCookie("short_status_message", "Delete failed!"+err.Error(), 30, "/", Server_Host, false, true)
 		c.Redirect(http.StatusFound, "/settings")
 		return
 	}
@@ -706,8 +708,7 @@ func PostCheckAuth(c *gin.Context) {
 	logUserName := *Striper(c.PostForm("usernameL"))
 	logPassword := *Striper(c.PostForm("passwordL"))
 	//check login credential
-	checkLoginQuery := fmt.Sprintf("SELECT password FROM user_creds WHERE username LIKE '%s' ;", logUserName)
-	hashedToBeChecked, err := QueryLog(c, checkLoginQuery)
+	hashedToBeChecked, err := QueryLog(c, logUserName)
 	if err != nil {
 		loginMessage := err.Error() + " Something went wrong with DB/Query!"
 		c.HTML(http.StatusBadGateway, "login.html", gin.H{
@@ -723,10 +724,10 @@ func PostCheckAuth(c *gin.Context) {
 		return
 	}
 	lastLogTime := time.Now().Format(time.RFC3339)
-	insertLastLog := fmt.Sprintf("UPDATE user_creds SET lastlogin = '%s' WHERE username = '%s';", lastLogTime, logUserName)
+
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
-	_, err = conn.Exec(ctx, insertLastLog)
+	_, err = conn.Exec(ctx, "UPDATE user_creds SET lastlogin = $1 WHERE username = $2;", lastLogTime, logUserName)
 	if err != nil {
 		log.Println("last login time update has error:", err)
 	}
@@ -750,10 +751,10 @@ func PostCheckReg(c *gin.Context) {
 	regEmail := *Striper(c.PostForm("emailReg"))
 	regCreatedOn := time.Now().Format(time.RFC3339)
 	//insert new users if not exist
-	checkRegQuery := fmt.Sprintf("INSERT INTO user_creds (user_id,username,password,email,createdon) VALUES (nextval('user_id_seq'),'%s','%s','%s','%s');", regUserName, regPassword, regEmail, regCreatedOn)
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), TIMEOUT)
 	defer cancel()
-	res, err := conn.Exec(ctx, checkRegQuery)
+	res, err := conn.Exec(ctx, "INSERT INTO user_creds (user_id,username,password,createdon,email) VALUES (nextval('user_id_seq'),$1,$2,$3,$4);", regUserName, regPassword, regCreatedOn, regEmail)
 
 	messageR := "New account created successfully! You can login anytime."
 	//if any error occurs

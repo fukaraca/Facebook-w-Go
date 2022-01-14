@@ -43,5 +43,3 @@ func main() {
 	log.Fatalln("Router encountered and error while main.Run:", lib.R.Run(lib.Server_Port))
 
 }
-
-//todo api ile postid,user posts fetch edilecek

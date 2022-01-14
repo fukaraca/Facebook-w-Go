@@ -44,10 +44,10 @@ func QueryErr(err error) string {
 }
 
 //QueryLog Function for querying login credentials from DB
-func QueryLog(c *gin.Context, strQuery string) (string, error) {
+func QueryLog(c *gin.Context, username string) (string, error) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
-	result, err := conn.Query(ctx, strQuery)
+	result, err := conn.Query(ctx, "SELECT password FROM user_creds WHERE username LIKE $1 ;", username)
 	defer result.Close()
 	if err != nil {
 		log.Println("Query Log conn.query:", err)
@@ -67,9 +67,9 @@ func QueryLog(c *gin.Context, strQuery string) (string, error) {
 	return "", err
 }
 
-//QueryUsername func checks if given profileID is exist in DB
-func QueryUsername(ctx context.Context, str string) bool {
-	result, err := conn.Query(ctx, str)
+//QueryUsername func checks if given username is exist in DB
+func QueryUsername(ctx context.Context, username string) bool {
+	result, err := conn.Query(ctx, "SELECT EXISTS(SELECT 1 FROM user_creds WHERE username=$1);", username)
 	defer result.Close()
 	if err != nil {
 		log.Println("Query username conn.query:", err)
@@ -88,8 +88,7 @@ func QueryUsername(ctx context.Context, str string) bool {
 func BringMeProfile(ctx context.Context, username string) (userCred, error) {
 	tempQurryed := userCred{}
 	tempBirthday := pgtype.Date{}
-	queryProfileString := fmt.Sprintf("SELECT name,lastname,mobilenumber,country,birthday,gender,avatarpath,bio FROM user_creds WHERE username='%s';", username)
-	bringy := conn.QueryRow(ctx, queryProfileString)
+	bringy := conn.QueryRow(ctx, "SELECT name,lastname,mobilenumber,country,birthday,gender,avatarpath,bio FROM user_creds WHERE username=$1;", username)
 	err = bringy.Scan(&tempQurryed.name, &tempQurryed.lastname, &tempQurryed.mobileNumber, &tempQurryed.country, &tempBirthday, &tempQurryed.gender, &tempQurryed.avatarPath, &tempQurryed.bio)
 	if err != nil {
 		return userCred{}, fmt.Errorf("scanning the reloaded user infos from DB is failed:%s", err.Error())
@@ -118,7 +117,6 @@ func BringMeAvatar(privateavtPath, username string) (string, error) {
 	}
 	defer avatarImage.Close()
 
-	//filePathString := fmt.Sprintf("./web/asset/avatars/%s/", username)
 	err = os.MkdirAll(publicAvatarDirPath, 0666)
 	if err != nil {
 		return defaultAvatar, fmt.Errorf("public avatar dir couldn't be created:%s", err.Error())
@@ -155,7 +153,7 @@ func BringHisGallery(username string, n int) []string {
 	}*/
 	privateGalleryPath := fmt.Sprintf("./private/assets/postImages/%s", username)
 	if _, err := os.Stat(privateGalleryPath); os.IsNotExist(err) {
-		log.Printf("there is no image that %s uploaded: %s\n", username, err.Error())
+		//log.Printf("there is no image that %s uploaded: %s\n", username, err.Error())
 		return nil
 	}
 	privateGallery, err := ListFilesInDir(privateGalleryPath, n)
@@ -222,8 +220,7 @@ func BringMeImage(privateImgPath, username string) (string, error) {
 func BringMeThatProfile(ctx context.Context, profileID string) (EuserCred, error) {
 	tempQurryed := EuserCred{}
 	tempBirthday := pgtype.Date{}
-	queryProfileString := fmt.Sprintf("SELECT name, lastname, relationship,school,location,workplace,birthday,bio,avatarpath FROM user_creds WHERE username='%s';", profileID)
-	bringy := conn.QueryRow(ctx, queryProfileString)
+	bringy := conn.QueryRow(ctx, "SELECT name, lastname, relationship,school,location,workplace,birthday,bio,avatarpath FROM user_creds WHERE username=$1;", profileID)
 	err = bringy.Scan(&tempQurryed.Name, &tempQurryed.Lastname, &tempQurryed.Relationship, &tempQurryed.School, &tempQurryed.Location, &tempQurryed.Workplace, &tempBirthday, &tempQurryed.Bio, &tempQurryed.AvatarPath)
 	if err != nil {
 		return EuserCred{}, fmt.Errorf("scanning the reloaded user infos from DB is failed:%s", err.Error())
@@ -236,8 +233,7 @@ func BringMeThatProfile(ctx context.Context, profileID string) (EuserCred, error
 //UnfriendQuery unfriends given thatProfile from username and vice-versa
 func UnfriendQuery(ctx context.Context, username, thatProfile string) error {
 
-	updateQueryStr := fmt.Sprintf("DELETE FROM relations WHERE username='%s' AND friendname='%s';\n DELETE FROM relations WHERE username='%s' AND friendname='%s';", username, thatProfile, thatProfile, username)
-	_, err = conn.Exec(ctx, updateQueryStr)
+	_, err = conn.Exec(ctx, "DELETE FROM relations WHERE username=$1 AND friendname=$2; DELETE FROM relations WHERE username=$3 AND friendname=$4;", username, thatProfile, thatProfile, username)
 	if err != nil {
 		log.Println("delete from relations table failed", err)
 		return err
@@ -247,8 +243,8 @@ func UnfriendQuery(ctx context.Context, username, thatProfile string) error {
 
 //DeleteThisPost deletes given post if username ise equal postername for related post
 func DeleteThisPost(ctx context.Context, username, postId string) error {
-	deletePostStr := fmt.Sprintf("DO $do$ BEGIN IF (SELECT EXISTS(SELECT 1 FROM posts WHERE post_id = '%s' AND postername = '%s')) THEN DELETE FROM posts where post_id='%s'; END IF;  END $do$", postId, username, postId)
-	_, err := conn.Exec(ctx, deletePostStr)
+
+	_, err := conn.Exec(ctx, "DO $do$ BEGIN IF (SELECT EXISTS(SELECT 1 FROM posts WHERE post_id = $1 AND postername = $2)) THEN DELETE FROM posts where post_id= $3 ; END IF;  END $do$", postId, username, postId)
 	if err != nil {
 		log.Println("delete post from posts table failed", err)
 		return err
@@ -259,8 +255,8 @@ func DeleteThisPost(ctx context.Context, username, postId string) error {
 
 //BringMeSomeHisPosts function returns posts from certain username
 func BringMeSomeMyPosts(ctx context.Context, username string) ([]PostThatBeTemplated, error) {
-	bringMePostsStr := fmt.Sprintf("SELECT * FROM posts WHERE postername='%s' ORDER BY post_time DESC LIMIT 10;", username)
-	rows, err := conn.Query(ctx, bringMePostsStr)
+
+	rows, err := conn.Query(ctx, "SELECT * FROM posts WHERE postername=$1 ORDER BY post_time DESC LIMIT 10;", username)
 	defer rows.Close()
 	if err != nil {
 		log.Println("get my posts query failed", err)
@@ -318,8 +314,7 @@ func BringMeSomeMessages(ctx context.Context, keyCandidate, fieldCandidate strin
 //UpdateMyBio updates bio for given bioString and username
 func UpdateMyBio(ctx context.Context, bioString, username string) error {
 	ctxT, cancel := context.WithTimeout(ctx, TIMEOUT)
-	updateString := fmt.Sprintf("UPDATE user_creds SET bio = '%s' WHERE username = '%s';", bioString, username)
-	_, err = conn.Exec(ctxT, updateString)
+	_, err = conn.Exec(ctxT, "UPDATE user_creds SET bio = $1 WHERE username = $2;", bioString, username)
 	cancel()
 	if err != nil {
 		log.Println("update bio failed:", err)
@@ -331,8 +326,7 @@ func UpdateMyBio(ctx context.Context, bioString, username string) error {
 
 //BringMeSomePosts function returns posts from certain username and also from his friends
 func BringMeSomePosts(ctx context.Context, username string) ([]PostThatBeTemplated, error) {
-	bringMePostsStr := fmt.Sprintf("SELECT * FROM posts WHERE postername IN (SELECT friendname FROM relations WHERE username ='%s' UNION SELECT '%s'::VARCHAR(50)) ORDER BY post_time DESC LIMIT 10;", username, username)
-	rows, err := conn.Query(ctx, bringMePostsStr)
+	rows, err := conn.Query(ctx, "SELECT * FROM posts WHERE postername IN (SELECT friendname FROM relations WHERE username = $1 UNION SELECT  $2::VARCHAR(50)) ORDER BY post_time DESC LIMIT 10;", username, username)
 	defer rows.Close()
 	if err != nil {
 		log.Println("getFriends query failed", err)
@@ -362,8 +356,8 @@ func BringMeSomePosts(ctx context.Context, username string) ([]PostThatBeTemplat
 //LoadMoreWithOffset function returns posts from certain username and also from his friends as paginated
 func LoadMoreWithOffset(ctx context.Context, username string, pageNum int) ([]ToBeLoadedMore, error) {
 	offset := 10 * (pageNum - 1)
-	loadMoreQueryStr := fmt.Sprintf("SELECT * FROM posts WHERE postername IN (SELECT friendname FROM relations WHERE username ='%s' UNION SELECT '%s'::VARCHAR(50)) ORDER BY post_time DESC OFFSET %d LIMIT 10;", username, username, offset)
-	rows, err := conn.Query(ctx, loadMoreQueryStr)
+	//todo sorun var mı loadMoreQueryStr := fmt.Sprintf("SELECT * FROM posts WHERE postername IN (SELECT friendname FROM relations WHERE username =$1 UNION SELECT $2::VARCHAR(50)) ORDER BY post_time DESC OFFSET $3 LIMIT 10;", username, username, offset)
+	rows, err := conn.Query(ctx, "SELECT * FROM posts WHERE postername IN (SELECT friendname FROM relations WHERE username =$1 UNION SELECT $2::VARCHAR(50)) ORDER BY post_time DESC OFFSET $3 LIMIT 10;", username, username, offset)
 	defer rows.Close()
 	if err != nil {
 		log.Println("getFriends query failed", err)
@@ -417,8 +411,8 @@ func LoadMoreWithOffset(ctx context.Context, username string, pageNum int) ([]To
 //LoadMoreWithOffsetAllSameUsername function returns posts from certain username as paginated
 func LoadMoreWithOffsetAllSameUsername(ctx context.Context, username string, pageNum int) ([]ToBeLoadedMore, error) {
 	offset := 10 * (pageNum - 1)
-	loadMoreQueryStr := fmt.Sprintf("SELECT * FROM posts WHERE postername='%s' ORDER BY post_time DESC OFFSET %d LIMIT 10;", username, offset)
-	rows, err := conn.Query(ctx, loadMoreQueryStr)
+	//todo bakılacak loadMoreQueryStr := fmt.Sprintf("SELECT * FROM posts WHERE postername=$1 ORDER BY post_time DESC OFFSET $2 LIMIT 10;", username, offset)
+	rows, err := conn.Query(ctx, "SELECT * FROM posts WHERE postername=$1 ORDER BY post_time DESC OFFSET $2 LIMIT 10;", username, offset)
 	defer rows.Close()
 	if err != nil {
 		log.Println("load friends post query failed", err)
@@ -463,8 +457,7 @@ func LoadMoreWithOffsetAllSameUsername(ctx context.Context, username string, pag
 
 //FilterUsersByLetters function makes query for search by filtering with 'letters' parameter and returns a slice o 3 random match
 func FilterUsersByLetters(ctx context.Context, letters SearchLetters) ([]ToBeLoadedMore, error) {
-	queryFilterString := fmt.Sprintf("SELECT username,name,lastname from user_creds where (username || name) ~* '(%s)' order by random() limit 3;;", letters.Letters)
-	rows, err := conn.Query(ctx, queryFilterString)
+	rows, err := conn.Query(ctx, "SELECT username,name,lastname from user_creds where (username || name) ~* $1 order by random() limit 3;", letters.Letters)
 	defer rows.Close()
 	if err != nil {
 		log.Println("getFriends query failed", err)
@@ -491,9 +484,7 @@ func FilterUsersByLetters(ctx context.Context, letters SearchLetters) ([]ToBeLoa
 //BringMeFriends return friends list as slice of struct
 func BringMeFriends(ctx context.Context, username string) ([]Relationship, error) {
 
-	getFriends := fmt.Sprintf("SELECT friendname,since FROM relations WHERE username='%s';", username)
-
-	res, err := conn.Query(ctx, getFriends)
+	res, err := conn.Query(ctx, "SELECT friendname,since FROM relations WHERE username=$1;", username)
 	defer res.Close()
 	if err != nil {
 		log.Println("getFriends query failed", err)
@@ -516,8 +507,7 @@ func BringMeFriends(ctx context.Context, username string) ([]Relationship, error
 
 //FindMeSuggestibleFriendsAndAlsoOneOfMine brings 3 random friends who is not friend of the username from DB and also one of his friends for "missed me?" div
 func FindMeSuggestibleFriendsAndAlsoOneOfMine(ctx context.Context, username string) ([]string, string, error) {
-	suggestStr := fmt.Sprintf("SELECT username FROM user_creds AS uc WHERE uc.username NOT IN (SELECT friendname FROM relations WHERE username = '%s') AND uc.username <> '%s' ORDER BY random() LIMIT 3;", username, username)
-	res, err := conn.Query(ctx, suggestStr)
+	res, err := conn.Query(ctx, "SELECT username FROM user_creds AS uc WHERE uc.username NOT IN (SELECT friendname FROM relations WHERE username = $1) AND uc.username <> $2 ORDER BY random() LIMIT 3;", username, username)
 	if err != nil {
 		log.Println("query error1:", err)
 		return nil, "", err
@@ -538,8 +528,7 @@ func FindMeSuggestibleFriendsAndAlsoOneOfMine(ctx context.Context, username stri
 		return nil, "", err
 	}
 	randomFriend := ""
-	getFriends := fmt.Sprintf("SELECT friendname FROM relations WHERE username='%s' ORDER BY random() LIMIT 1;", username)
-	row := conn.QueryRow(ctx, getFriends)
+	row := conn.QueryRow(ctx, "SELECT friendname FROM relations WHERE username= $1 ORDER BY random() LIMIT 1;", username)
 	err = row.Scan(&randomFriend)
 	if err != nil && err != pgx.ErrNoRows {
 		log.Println("getFriends query failed", err)
@@ -555,8 +544,19 @@ func FindMeSuggestibleFriendsAndAlsoOneOfMine(ctx context.Context, username stri
 //QueryFriendship investigates whether username is friend with friendUsername or not
 func QueryFriendship(ctx context.Context, username, friendUsername string) bool {
 
-	queryStr := fmt.Sprintf("SELECT EXISTS(SELECT 1 FROM relations WHERE username = '%s' AND friendname='%s');", username, friendUsername)
-	ok := QueryUsername(ctx, queryStr) //check that if that profile is your friend or not
+	result, err := conn.Query(ctx, "SELECT EXISTS(SELECT 1 FROM relations WHERE username = $1 AND friendname=$2);", username, friendUsername)
+	defer result.Close()
+	if err != nil {
+		log.Println("Query username conn.query:", err)
+		return false
+	}
+	ok := false
+	for result.Next() {
+		if err := result.Scan(&ok); err != nil || !ok {
+			return false
+		}
+	}
+
 	if !ok {
 		return false
 	}
