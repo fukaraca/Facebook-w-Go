@@ -88,6 +88,7 @@ func setEnv() *viper.Viper {
 	return sE
 }
 
+//todo
 func setVars() *viper.Viper {
 	sE := viper.New()
 	sE.AddConfigPath("./config")

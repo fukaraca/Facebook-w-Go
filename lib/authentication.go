@@ -46,8 +46,8 @@ func CreateSession(username string, c *gin.Context) {
 	defer cancel()
 	cache.Do(ctx, "SETEX", sessionToken.String(), "3600", username)
 
-	c.SetCookie("session_token", sessionToken.String(), 3600, "/", "localhost", false, true)
-	c.SetCookie("uid", username, 3600, "/", "localhost", false, true)
+	c.SetCookie("session_token", sessionToken.String(), 3600, "/", Server_Host, false, true)
+	c.SetCookie("uid", username, 3600, "/", Server_Host, false, true)
 
 }
 
@@ -93,9 +93,9 @@ func DeleteSession(c *gin.Context) (bool, error) {
 
 	log.Printf("%v item removed in order to delete session.\n", res)
 
-	c.SetCookie("session_token", "", -1, "/", "localhost", false, true)
-	c.SetCookie("uid", "", -1, "/", "localhost", false, true)
-	c.SetCookie("short_status_message", "", -1, "/", "localhost", false, true)
+	c.SetCookie("session_token", "", -1, "/", Server_Host, false, true)
+	c.SetCookie("uid", "", -1, "/", Server_Host, false, true)
+	c.SetCookie("short_status_message", "", -1, "/", Server_Host, false, true)
 	err = os.RemoveAll("./web/asset")
 	if err != nil {
 		log.Println("deleting the public folders due to logout failed", err)

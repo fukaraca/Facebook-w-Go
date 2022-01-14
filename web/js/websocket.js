@@ -47,7 +47,10 @@ function wsOnMessage(event){
     taken=JSON.parse(event.data)
     if (taken.msgSender===clientID){//user is also sender
         let usernamePath=document.getElementById('avatar-username').innerText
-        let elem=String.format('<div class="chat-left"><div class="chat-left-text"><img src={0} class="thumb-left-img">{1}</div><div class="time-text-left">{2}</div></div>',usernamePath,taken.msgBody,timeConverter(taken.msgTime))
+        let elem=String.format(`<div class="chat-left"><div class="chat-left-text"> 
+                                    <img alt="thumbnail" src="{0}" class="thumb-left-img">{1}</div>
+                                            <div class="time-text-left">{2}</div>
+                                </div>`,usernamePath,taken.msgBody,timeConverter(taken.msgTime))
 
         document.getElementById('messages-div').insertAdjacentHTML("beforeend", elem);
 
