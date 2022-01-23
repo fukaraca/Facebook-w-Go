@@ -1,12 +1,11 @@
 # smallSteeps
-A facebook clone(ish) as project just for making fun of steep curve of learning programming with smaller steps. It's made by using Go and Javascript
+A facebook clone(ish) as project just for making fun of steep curve of learning programming with smaller steps. It's made by using Go.
+Demo video and live Heroku page can be found here:
 
-You can create/delete or update your account, search and add friends.
+Youtube:
+https://www.youtube.com/watch?v=T-Muc5zKgYk
 
-You can post text, image and youtube video links or both...
+Heroku:
+http://facebook-clone-951753.herokuapp.com
 
-Also you can chat with anyone.
-
-
-
-
+Main objective with the project is gaining some back-end skills like Redis, PostgreSQL, websockets, AJAX, cloud, session management etc. 
