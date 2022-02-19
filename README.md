@@ -1,5 +1,5 @@
-# smallSteeps
-A facebook clone(ish) as project just for making fun of steep curve of learning programming with smaller steps. It's made by using Go.
+# Facebook clone - smallSteeps
+A facebook clone(ish) as project just for making fun of steep curve of learning programming with smaller steps.
 Demo video and live Heroku page can be found here:
 
 Youtube:
