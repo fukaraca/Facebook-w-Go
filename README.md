@@ -1,5 +1,5 @@
-# Facebook clone - smallSteeps
-A facebook clone(ish) as project just for making fun of steep curve of learning programming with smaller steps.
+# Facebook clone 
+A facebook clone(ish) as a project just for making funnier steep curve of learning programming with smaller steps.
 Demo video and live Heroku page can be found here:
 
 Youtube:
